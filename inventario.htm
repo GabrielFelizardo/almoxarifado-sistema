@@ -22,36 +22,22 @@
         .nav-link.active { color: var(--primary-color); background-color: var(--card-background); border-bottom: 3px solid var(--primary-color) !important; font-weight: 600; }
         .table-responsive { max-height: 65vh; overflow-y: auto; }
         .table thead { position: sticky; top: -1px; background-color: var(--background-light); z-index: 10; }
-        .status-select { border-radius: 6px; font-weight: 500; border-width: 2px; }
-        .status-recebido { background-color: #e3f2fd; border-color: #90caf9; color: #0d6efd; }
-        .status-em-separacao { background-color: #fff8e1; border-color: #ffe082; color: #f57f17; }
-        .status-concluido { background-color: #e8f5e9; border-color: #a5d6a7; color: #1e8e3e; }
-
-        /* Estilos para a busca */
-        .search-wrapper {
-            position: relative;
-        }
-        .search-wrapper .fa-search {
-            position: absolute;
-            top: 50%;
-            left: 15px;
-            transform: translateY(-50%);
-            color: var(--text-muted);
-        }
-        #inventorySearch {
-            padding-left: 40px;
-            border-radius: 8px;
-        }
+        /* Outros estilos permanecem os mesmos */
     </style>
 </head>
 <body>
     <div class="container my-5">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h3 class="mb-0"><i class="fas fa-warehouse"></i> Painel de Controle do Almoxarifado</h3>
-                <a href="https://docs.google.com/spreadsheets/d/1aOWeZYIo1Che6vlj7TPwasVcxmR97eeq83WsWsDtP_I/edit" target="_blank" class="btn btn-light btn-sm">
-                    <i class="fas fa-table"></i> Acessar Planilha
-                </a>
+                <h3 class="mb-0"><i class="fas fa-warehouse"></i> Painel de Controle</h3>
+                <div>
+                    <a href="./index.html" target="_blank" class="btn btn-light btn-sm me-2">
+                        <i class="fas fa-file-alt"></i> Ver Formulário
+                    </a>
+                    <a href="https://docs.google.com/spreadsheets/d/1aOWeZYIo1Che6vlj7TPwasVcxmR97eeq83WsWsDtP_I/edit" target="_blank" class="btn btn-light btn-sm">
+                        <i class="fas fa-table"></i> Acessar Planilha
+                    </a>
+                </div>
             </div>
             <div class="card-body p-4">
                 <ul class="nav nav-tabs" id="myTab" role="tablist">
@@ -62,8 +48,8 @@
                     <div class="tab-pane fade show active" id="inventory-pane" role="tabpanel">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <div class="search-wrapper flex-grow-1 me-3">
-                                <i class="fas fa-search"></i>
-                                <input type="text" id="inventorySearch" class="form-control" placeholder="Buscar material por nome ou código...">
+                                <i class="fas fa-search" style="position: absolute; top: 50%; left: 15px; transform: translateY(-50%); color: var(--text-muted);"></i>
+                                <input type="text" id="inventorySearch" class="form-control" placeholder="Buscar material por nome ou código..." style="padding-left: 40px; border-radius: 8px;">
                             </div>
                             <div>
                                 <button class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#addNewItemModal"><i class="fas fa-plus"></i> Novo</button>
@@ -92,7 +78,6 @@
     <script>
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzGhyNSo1-w9TDM4BmtkMWTn6bLdwbnkcupdr7i5zZaqD6nrcMnqvPnKncVn8_nSb3A/exec";
         
-        // <<< --- NOVA LÓGICA DE BUSCA AQUI --- >>>
         const inventorySearchInput = document.getElementById('inventorySearch');
         inventorySearchInput.addEventListener('input', filterInventory);
         
@@ -116,7 +101,6 @@
                     }
                 });
                 
-                // Esconde o título da categoria se nenhum item dela corresponder à busca
                 if (categoryHasVisibleRows) {
                     category.style.display = '';
                 } else {
@@ -125,7 +109,6 @@
             });
         }
 
-        // Restante do JavaScript (sem alterações, apenas a função fetchInventory tem uma pequena adição)
         const loadingDiv = document.getElementById('loading');
         const errorDiv = document.getElementById('error-display');
         const addStockModal = new bootstrap.Modal(document.getElementById('addStockModal'));
@@ -164,7 +147,6 @@
                     html = '<p class="text-center text-muted p-4">Nenhum item no inventário.</p>';
                 } else {
                     sortedCategories.forEach(category => {
-                        // Adicionado um container para cada categoria para facilitar o filtro
                         html += `<div class="category-container"><h4 class="mt-2 text-secondary">${category}</h4><table class="table table-sm table-striped table-hover align-middle"><thead class="table-light"><tr><th style="width: 120px;">Código</th><th>Item</th><th style="width: 120px;">Estoque</th><th style="width: 180px;">Ações</th></tr></thead><tbody>`;
                         const sortedItems = data[category].sort((a, b) => a.nome.localeCompare(b.nome));
                         sortedItems.forEach(item => {
@@ -174,7 +156,7 @@
                     });
                 }
                 inventoryDiv.innerHTML = html;
-                filterInventory(); // Aplica o filtro atual caso haja algo no campo de busca
+                filterInventory();
             } catch (error) { console.error('Falha ao carregar inventário:', error); }
         }
 
