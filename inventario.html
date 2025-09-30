@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -22,33 +24,23 @@
         .nav-link.active { color: var(--primary-color); background-color: var(--card-background); border-bottom: 3px solid var(--primary-color) !important; font-weight: 600; }
         .table-responsive { max-height: 65vh; overflow-y: auto; }
         .table thead { position: sticky; top: -1px; background-color: var(--background-light); z-index: 10; }
+        .kpi-card { border: 1px solid var(--border-color); border-radius: 10px; padding: 1.5rem; text-align: center; background-color: #fff; }
+        .kpi-card .value { font-size: 2.5rem; font-weight: 700; color: var(--primary-color); }
+        .kpi-card .label { font-size: 1rem; color: var(--text-muted); font-weight: 500; }
         .status-select { border-radius: 6px; font-weight: 500; border-width: 2px; }
         .status-recebido { background-color: #e3f2fd; border-color: #90caf9; color: #0d6efd; }
         .status-em-separacao { background-color: #fff8e1; border-color: #ffe082; color: #f57f17; }
         .status-concluido { background-color: #e8f5e9; border-color: #a5d6a7; color: #1e8e3e; }
-
-        /* Estilos para a busca */
-        .search-wrapper {
-            position: relative;
-        }
-        .search-wrapper .fa-search {
-            position: absolute;
-            top: 50%;
-            left: 15px;
-            transform: translateY(-50%);
-            color: var(--text-muted);
-        }
-        #inventorySearch {
-            padding-left: 40px;
-            border-radius: 8px;
-        }
+        .search-wrapper { position: relative; }
+        .search-wrapper .fa-search { position: absolute; top: 50%; left: 15px; transform: translateY(-50%); color: var(--text-muted); }
+        #inventorySearch { padding-left: 40px; border-radius: 8px; }
     </style>
 </head>
 <body>
     <div class="container my-5">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h3 class="mb-0"><i class="fas fa-warehouse"></i> Painel de Controle do Almoxarifado</h3>
+                <h3 class="mb-0"><i class="fas fa-chart-line"></i> Painel de Controle do Almoxarifado</h3>
                 <a href="https://docs.google.com/spreadsheets/d/1aOWeZYIo1Che6vlj7TPwasVcxmR97eeq83WsWsDtP_I/edit" target="_blank" class="btn btn-light btn-sm">
                     <i class="fas fa-table"></i> Acessar Planilha
                 </a>
@@ -57,6 +49,7 @@
                 <ul class="nav nav-tabs" id="myTab" role="tablist">
                     <li class="nav-item" role="presentation"><button class="nav-link active" id="inventory-tab" data-bs-toggle="tab" data-bs-target="#inventory-pane" type="button"><i class="fas fa-boxes"></i> Inventário</button></li>
                     <li class="nav-item" role="presentation"><button class="nav-link" id="orders-tab" data-bs-toggle="tab" data-bs-target="#orders-pane" type="button"><i class="fas fa-clipboard-list"></i> Gerenciar Pedidos</button></li>
+                    <li class="nav-item" role="presentation"><button class="nav-link" id="analytics-tab" data-bs-toggle="tab" data-bs-target="#analytics-pane" type="button"><i class="fas fa-chart-pie"></i> Relatórios</button></li>
                 </ul>
                 <div class="tab-content pt-3" id="myTabContent">
                     <div class="tab-pane fade show active" id="inventory-pane" role="tabpanel">
@@ -78,6 +71,12 @@
                         </div>
                         <div id="orders-display" class="table-responsive"></div>
                     </div>
+                    <div class="tab-pane fade" id="analytics-pane" role="tabpanel">
+                        <div class="d-flex justify-content-end align-items-center mb-3">
+                            <button class="btn btn-outline-secondary" onclick="fetchAnalytics()"><i class="fas fa-sync-alt"></i> Atualizar Relatórios</button>
+                        </div>
+                        <div id="analytics-display"></div>
+                    </div>
                 </div>
                  <div id="loading" class="text-center p-5" style="display: none;"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Carregando...</p></div>
                  <div id="error-display" class="alert alert-danger mt-3" style="display: none;"></div>
@@ -91,41 +90,9 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzGhyNSo1-w9TDM4BmtkMWTn6bLdwbnkcupdr7i5zZaqD6nrcMnqvPnKncVn8_nSb3A/exec";
-        
-        // <<< --- NOVA LÓGICA DE BUSCA AQUI --- >>>
-        const inventorySearchInput = document.getElementById('inventorySearch');
-        inventorySearchInput.addEventListener('input', filterInventory);
-        
-        function filterInventory() {
-            const searchTerm = inventorySearchInput.value.toLowerCase();
-            const inventoryDiv = document.getElementById('inventory-display');
-            const categories = inventoryDiv.querySelectorAll('.category-container');
-            
-            categories.forEach(category => {
-                const table = category.querySelector('table');
-                const rows = table.querySelectorAll('tbody tr');
-                let categoryHasVisibleRows = false;
-                
-                rows.forEach(row => {
-                    const rowText = row.textContent.toLowerCase();
-                    if (rowText.includes(searchTerm)) {
-                        row.style.display = '';
-                        categoryHasVisibleRows = true;
-                    } else {
-                        row.style.display = 'none';
-                    }
-                });
-                
-                // Esconde o título da categoria se nenhum item dela corresponder à busca
-                if (categoryHasVisibleRows) {
-                    category.style.display = '';
-                } else {
-                    category.style.display = 'none';
-                }
-            });
-        }
+        const LOW_STOCK_THRESHOLD = 10;
+        const HIGH_STOCK_THRESHOLD = 100;
 
-        // Restante do JavaScript (sem alterações, apenas a função fetchInventory tem uma pequena adição)
         const loadingDiv = document.getElementById('loading');
         const errorDiv = document.getElementById('error-display');
         const addStockModal = new bootstrap.Modal(document.getElementById('addStockModal'));
@@ -157,49 +124,105 @@
         async function fetchInventory() {
             try {
                 const data = await apiCall('inventory');
-                const inventoryDiv = document.getElementById('inventory-display');
-                const sortedCategories = Object.keys(data).sort();
-                let html = '';
-                if (sortedCategories.length === 0) {
-                    html = '<p class="text-center text-muted p-4">Nenhum item no inventário.</p>';
-                } else {
-                    sortedCategories.forEach(category => {
-                        // Adicionado um container para cada categoria para facilitar o filtro
-                        html += `<div class="category-container"><h4 class="mt-2 text-secondary">${category}</h4><table class="table table-sm table-striped table-hover align-middle"><thead class="table-light"><tr><th style="width: 120px;">Código</th><th>Item</th><th style="width: 120px;">Estoque</th><th style="width: 180px;">Ações</th></tr></thead><tbody>`;
-                        const sortedItems = data[category].sort((a, b) => a.nome.localeCompare(b.nome));
-                        sortedItems.forEach(item => {
-                            html += `<tr><td><strong>${item.sku}</strong></td><td>${item.nome}</td><td>${item.qtd}</td><td><div class="btn-group" role="group"><button class="btn btn-sm btn-outline-primary" onclick="openAddStockModal('${item.nome.replace(/'/g, "\\'")}', ${item.qtd})">Adicionar</button><button class="btn btn-sm btn-outline-danger" onclick="deleteItem('${item.nome.replace(/'/g, "\\'")}')">Excluir</button></div></td></tr>`;
-                        });
-                        html += '</tbody></table></div>';
-                    });
-                }
-                inventoryDiv.innerHTML = html;
-                filterInventory(); // Aplica o filtro atual caso haja algo no campo de busca
+                document.getElementById('inventory-display').innerHTML = buildInventoryHtml(data);
+                filterInventory();
             } catch (error) { console.error('Falha ao carregar inventário:', error); }
         }
 
         async function fetchOrders() {
             try {
                 const data = await apiCall('orders');
-                const ordersDiv = document.getElementById('orders-display');
-                let html = `<table class="table table-sm table-hover align-middle"><thead class="table-light"><tr><th style="width: 150px;">ID do Pedido</th><th>Data</th><th>Solicitante</th><th>Item (Qtd)</th><th style="width: 180px;">Status</th></tr></thead><tbody>`;
-                if (!Array.isArray(data) || data.length === 0) {
-                    html += `<tr><td colspan="5" class="text-center text-muted p-4">Nenhum pedido encontrado.</td></tr>`;
-                } else {
-                    data.forEach(order => {
-                        const orderDate = new Date(order.timestamp).toLocaleDateString('pt-BR');
-                        let statusClass = {'Recebido':'status-recebido', 'Em separação':'status-em-separacao', 'Concluído':'status-concluido'}[order.status] || '';
-                        html += `<tr><td><code>${order.pedidoId}</code></td><td>${orderDate}</td><td>${order.solicitante} (${order.setor})</td><td>${order.item} (${order.qtd})</td>
-                                   <td><select class="form-select form-select-sm status-select ${statusClass}" onchange="updateStatus('${order.pedidoId}', this.value, this)">
-                                       <option value="Recebido" ${order.status === 'Recebido' ? 'selected' : ''}>Recebido</option>
-                                       <option value="Em separação" ${order.status === 'Em separação' ? 'selected' : ''}>Em separação</option>
-                                       <option value="Concluído" ${order.status === 'Concluído' ? 'selected' : ''}>Concluído</option>
-                                     </select></td></tr>`;
-                    });
-                }
-                html += '</tbody></table>';
-                ordersDiv.innerHTML = html;
+                document.getElementById('orders-display').innerHTML = buildOrdersHtml(data);
             } catch (error) { console.error('Falha ao carregar pedidos:', error); }
+        }
+
+        async function fetchAnalytics() {
+            try {
+                const data = await apiCall('analytics');
+                document.getElementById('analytics-display').innerHTML = buildAnalyticsHtml(data);
+            } catch (error) { console.error('Falha ao carregar relatórios:', error); }
+        }
+
+        function buildInventoryHtml(data) {
+            const sortedCategories = Object.keys(data).sort();
+            if (sortedCategories.length === 0) return '<p class="text-center text-muted p-4">Nenhum item no inventário.</p>';
+            let html = '';
+            sortedCategories.forEach(category => {
+                html += `<div class="category-container"><h4 class="mt-2 text-secondary">${category}</h4><table class="table table-sm table-striped table-hover align-middle"><thead class="table-light"><tr><th style="width: 120px;">Código</th><th>Item</th><th style="width: 120px;">Estoque</th><th style="width: 180px;">Ações</th></tr></thead><tbody>`;
+                const sortedItems = data[category].sort((a, b) => a.nome.localeCompare(b.nome));
+                sortedItems.forEach(item => {
+                    html += `<tr><td><strong>${item.sku}</strong></td><td>${item.nome}</td><td>${item.qtd}</td><td><div class="btn-group" role="group"><button class="btn btn-sm btn-outline-primary" onclick="openAddStockModal('${item.nome.replace(/'/g, "\\'")}', ${item.qtd})">Adicionar</button><button class="btn btn-sm btn-outline-danger" onclick="deleteItem('${item.nome.replace(/'/g, "\\'")}')">Excluir</button></div></td></tr>`;
+                });
+                html += '</tbody></table></div>';
+            });
+            return html;
+        }
+
+        function buildOrdersHtml(data) {
+            let html = `<table class="table table-sm table-hover align-middle"><thead class="table-light"><tr><th style="width: 150px;">ID do Pedido</th><th>Data</th><th>Solicitante</th><th>Item (Qtd)</th><th style="width: 180px;">Status</th></tr></thead><tbody>`;
+            if (!Array.isArray(data) || data.length === 0) {
+                html += `<tr><td colspan="5" class="text-center text-muted p-4">Nenhum pedido encontrado.</td></tr>`;
+            } else {
+                data.forEach(order => {
+                    const orderDate = new Date(order.timestamp).toLocaleDateString('pt-BR');
+                    let statusClass = {'Recebido':'status-recebido', 'Em separação':'status-em-separacao', 'Concluído':'status-concluido'}[order.status] || '';
+                    html += `<tr><td><code>${order.pedidoId}</code></td><td>${orderDate}</td><td>${order.solicitante} (${order.setor})</td><td>${order.item} (${order.qtd})</td>
+                               <td><select class="form-select form-select-sm status-select ${statusClass}" onchange="updateStatus('${order.pedidoId}', this.value, this)">
+                                   <option value="Recebido" ${order.status === 'Recebido' ? 'selected' : ''}>Recebido</option>
+                                   <option value="Em separação" ${order.status === 'Em separação' ? 'selected' : ''}>Em separação</option>
+                                   <option value="Concluído" ${order.status === 'Concluído' ? 'selected' : ''}>Concluído</option>
+                                 </select></td></tr>`;
+                });
+            }
+            html += '</tbody></table>';
+            return html;
+        }
+
+        function buildAnalyticsHtml(data) {
+            const renderList = (items, isTop) => {
+                if (!items || items.length === 0) return `<li class="list-group-item text-muted">Nenhum dado no período.</li>`;
+                return items.map(item => `<li class="list-group-item d-flex justify-content-between align-items-center">${isTop ? item.name : item[0]} <span class="badge bg-${isTop ? 'primary' : 'danger'} rounded-pill">${isTop ? item.count : item[1]}</span></li>`).join('');
+            };
+
+            return `
+                <div class="row g-4">
+                    <div class="col-md-4"><div class="kpi-card h-100"><div class="value">${data.ordersTodayCount}</div><div class="label">Pedidos Hoje</div></div></div>
+                    <div class="col-md-4"><div class="kpi-card h-100"><div class="value">${data.pendingOrdersCount}</div><div class="label">Pedidos Pendentes</div></div></div>
+                    <div class="col-md-4"><div class="kpi-card h-100"><div class="value text-danger">${data.lowStockItems.length}</div><div class="label">Itens com Estoque Baixo</div></div></div>
+                </div>
+                <div class="row g-4 mt-3">
+                    <div class="col-lg-4"><h5 class="mt-4">Mais Pedidos no Mês</h5><ul class="list-group">${renderList(data.mostRequestedMonth, true)}</ul></div>
+                    <div class="col-lg-4"><h5 class="mt-4">Mais Pedidos na Semana</h5><ul class="list-group">${renderList(data.mostRequestedWeek, true)}</ul></div>
+                    <div class="col-lg-4"><h5 class="mt-4">Mais Pedidos Hoje</h5><ul class="list-group">${renderList(data.mostRequestedDay, true)}</ul></div>
+                </div>
+                <div class="row g-4 mt-3">
+                    <div class="col-lg-6"><h5 class="mt-4">Itens com Estoque Baixo (&lt;= ${LOW_STOCK_THRESHOLD})</h5><ul class="list-group">${renderList(data.lowStockItems, false)}</ul></div>
+                    <div class="col-lg-6"><h5 class="mt-4">Itens com Estoque Alto (&gt;= ${HIGH_STOCK_THRESHOLD})</h5><ul class="list-group">${renderList(data.highStockItems, false)}</ul></div>
+                </div>`;
+        }
+        
+        const inventorySearchInput = document.getElementById('inventorySearch');
+        inventorySearchInput.addEventListener('input', filterInventory);
+        
+        function filterInventory() {
+            const searchTerm = inventorySearchInput.value.toLowerCase();
+            const inventoryDiv = document.getElementById('inventory-display');
+            const categories = inventoryDiv.querySelectorAll('.category-container');
+            categories.forEach(category => {
+                const table = category.querySelector('table');
+                const rows = table.querySelectorAll('tbody tr');
+                let categoryHasVisibleRows = false;
+                rows.forEach(row => {
+                    const rowText = row.textContent.toLowerCase();
+                    if (rowText.includes(searchTerm)) {
+                        row.style.display = '';
+                        categoryHasVisibleRows = true;
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+                category.style.display = categoryHasVisibleRows ? '' : 'none';
+            });
         }
         
         async function updateStatus(pedidoId, newStatus, selectElement) {
@@ -269,6 +292,7 @@
                 const targetId = event.target.id;
                 if(targetId === 'inventory-tab') fetchInventory();
                 if(targetId === 'orders-tab') fetchOrders();
+                if(targetId === 'analytics-tab') fetchAnalytics();
             }));
             fetchInventory();
         });
