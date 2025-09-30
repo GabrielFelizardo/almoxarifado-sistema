@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Controle - Almoxarifado</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #4A90E2; --secondary-color: #6c757d; --background-light: #f4f7f6;
+            --card-background: #ffffff; --text-dark: #343a40; --text-muted: #868e96;
+            --border-color: #e9ecef; --success-color: #5cb85c; --danger-color: #d9534f;
+            --warning-color: #f0ad4e; --info-color: #5bc0de;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: var(--background-light); }
+        .container { max-width: 1200px; }
+        .card { border: none; border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.07); }
+        .card-header { background: linear-gradient(135deg, var(--primary-color), var(--info-color)); color: white; border-radius: 12px 12px 0 0; padding: 1.5rem; text-align: center; border-bottom: none; }
+        .nav-tabs { border-bottom-color: var(--border-color); }
+        .nav-link { color: var(--text-muted); font-weight: 500; border-radius: 8px 8px 0 0 !important; cursor: pointer; }
+        .nav-link.active { color: var(--primary-color); background-color: var(--card-background); border-bottom: 3px solid var(--primary-color) !important; font-weight: 600; }
+        .table-responsive { max-height: 65vh; overflow-y: auto; }
+        .table thead { position: sticky; top: -1px; background-color: var(--background-light); z-index: 10; }
+        .status-select { border-radius: 6px; font-weight: 500; border-width: 2px; }
+        .status-recebido { background-color: #e3f2fd; border-color: #90caf9; color: #0d6efd; }
+        .status-em-separacao { background-color: #fff8e1; border-color: #ffe082; color: #f57f17; }
+        .status-concluido { background-color: #e8f5e9; border-color: #a5d6a7; color: #1e8e3e; }
+
+        /* Estilos para a busca */
+        .search-wrapper {
+            position: relative;
+        }
+        .search-wrapper .fa-search {
+            position: absolute;
+            top: 50%;
+            left: 15px;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }
+        #inventorySearch {
+            padding-left: 40px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container my-5">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="mb-0"><i class="fas fa-warehouse"></i> Painel de Controle do Almoxarifado</h3>
+                <a href="https://docs.google.com/spreadsheets/d/1aOWeZYIo1Che6vlj7TPwasVcxmR97eeq83WsWsDtP_I/edit" target="_blank" class="btn btn-light btn-sm">
+                    <i class="fas fa-table"></i> Acessar Planilha
+                </a>
+            </div>
+            <div class="card-body p-4">
+                <ul class="nav nav-tabs" id="myTab" role="tablist">
+                    <li class="nav-item" role="presentation"><button class="nav-link active" id="inventory-tab" data-bs-toggle="tab" data-bs-target="#inventory-pane" type="button"><i class="fas fa-boxes"></i> Inventário</button></li>
+                    <li class="nav-item" role="presentation"><button class="nav-link" id="orders-tab" data-bs-toggle="tab" data-bs-target="#orders-pane" type="button"><i class="fas fa-clipboard-list"></i> Gerenciar Pedidos</button></li>
+                </ul>
+                <div class="tab-content pt-3" id="myTabContent">
+                    <div class="tab-pane fade show active" id="inventory-pane" role="tabpanel">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="search-wrapper flex-grow-1 me-3">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="inventorySearch" class="form-control" placeholder="Buscar material por nome ou código...">
+                            </div>
+                            <div>
+                                <button class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#addNewItemModal"><i class="fas fa-plus"></i> Novo</button>
+                                <button class="btn btn-outline-secondary" onclick="fetchInventory()"><i class="fas fa-sync-alt"></i></button>
+                            </div>
+                        </div>
+                        <div id="inventory-display" class="table-responsive"></div>
+                    </div>
+                    <div class="tab-pane fade" id="orders-pane" role="tabpanel">
+                        <div class="d-flex justify-content-end align-items-center mb-3">
+                            <button class="btn btn-outline-secondary" onclick="fetchOrders()"><i class="fas fa-sync-alt"></i></button>
+                        </div>
+                        <div id="orders-display" class="table-responsive"></div>
+                    </div>
+                </div>
+                 <div id="loading" class="text-center p-5" style="display: none;"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Carregando...</p></div>
+                 <div id="error-display" class="alert alert-danger mt-3" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="addStockModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="modalTitle"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><p>Item: <strong id="itemName"></strong></p><p>Estoque Atual: <strong id="currentStock"></strong></p><div class="mb-3"><label for="quantityToAdd" class="form-label">Quantidade a Adicionar:</label><input type="number" class="form-control" id="quantityToAdd" min="1" required></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-primary" id="saveStockButton">Salvar</button></div></div></div></div>
+    <div class="modal fade" id="addNewItemModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Adicionar Novo Material</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label for="newItemName" class="form-label">Nome do Novo Material:</label><input type="text" class="form-control" id="newItemName" required></div><div class="mb-3"><label for="initialQuantity" class="form-label">Quantidade Inicial:</label><input type="number" class="form-control" id="initialQuantity" min="0" value="0" required></div><div class="mb-3"><label for="itemCategory" class="form-label">Categoria:</label><select class="form-select" id="itemCategory" required><option value="" selected disabled>Selecione...</option><option>Material de Escritório</option><option>Material para Copa</option><option>Material de Limpeza</option></select></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-primary" id="saveNewItemButton">Salvar Novo Material</button></div></div></div></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzGhyNSo1-w9TDM4BmtkMWTn6bLdwbnkcupdr7i5zZaqD6nrcMnqvPnKncVn8_nSb3A/exec";
+        
+        // <<< --- NOVA LÓGICA DE BUSCA AQUI --- >>>
+        const inventorySearchInput = document.getElementById('inventorySearch');
+        inventorySearchInput.addEventListener('input', filterInventory);
+        
+        function filterInventory() {
+            const searchTerm = inventorySearchInput.value.toLowerCase();
+            const inventoryDiv = document.getElementById('inventory-display');
+            const categories = inventoryDiv.querySelectorAll('.category-container');
+            
+            categories.forEach(category => {
+                const table = category.querySelector('table');
+                const rows = table.querySelectorAll('tbody tr');
+                let categoryHasVisibleRows = false;
+                
+                rows.forEach(row => {
+                    const rowText = row.textContent.toLowerCase();
+                    if (rowText.includes(searchTerm)) {
+                        row.style.display = '';
+                        categoryHasVisibleRows = true;
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+                
+                // Esconde o título da categoria se nenhum item dela corresponder à busca
+                if (categoryHasVisibleRows) {
+                    category.style.display = '';
+                } else {
+                    category.style.display = 'none';
+                }
+            });
+        }
+
+        // Restante do JavaScript (sem alterações, apenas a função fetchInventory tem uma pequena adição)
+        const loadingDiv = document.getElementById('loading');
+        const errorDiv = document.getElementById('error-display');
+        const addStockModal = new bootstrap.Modal(document.getElementById('addStockModal'));
+        const addNewItemModal = new bootstrap.Modal(document.getElementById('addNewItemModal'));
+        
+        const showLoading = (show) => { loadingDiv.style.display = show ? 'block' : 'none'; };
+        const showError = (message) => { errorDiv.textContent = message; errorDiv.style.display = 'block'; };
+        const hideMessages = () => { errorDiv.style.display = 'none'; };
+
+        async function apiCall(page = null, payload = null) {
+            hideMessages();
+            showLoading(true);
+            const url = page ? `${SCRIPT_URL}?page=${page}` : SCRIPT_URL;
+            const options = payload ? { method: 'POST', mode: 'cors', body: JSON.stringify(payload) } : { method: 'GET' };
+            try {
+                const response = await fetch(url, options);
+                if (!response.ok) throw new Error(`A comunicação com o servidor falhou: ${response.statusText}`);
+                const data = await response.json();
+                if (data.error || data.result === 'error') throw new Error(data.error || data.message);
+                return data;
+            } catch (error) {
+                showError(error.message);
+                throw error;
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function fetchInventory() {
+            try {
+                const data = await apiCall('inventory');
+                const inventoryDiv = document.getElementById('inventory-display');
+                const sortedCategories = Object.keys(data).sort();
+                let html = '';
+                if (sortedCategories.length === 0) {
+                    html = '<p class="text-center text-muted p-4">Nenhum item no inventário.</p>';
+                } else {
+                    sortedCategories.forEach(category => {
+                        // Adicionado um container para cada categoria para facilitar o filtro
+                        html += `<div class="category-container"><h4 class="mt-2 text-secondary">${category}</h4><table class="table table-sm table-striped table-hover align-middle"><thead class="table-light"><tr><th style="width: 120px;">Código</th><th>Item</th><th style="width: 120px;">Estoque</th><th style="width: 180px;">Ações</th></tr></thead><tbody>`;
+                        const sortedItems = data[category].sort((a, b) => a.nome.localeCompare(b.nome));
+                        sortedItems.forEach(item => {
+                            html += `<tr><td><strong>${item.sku}</strong></td><td>${item.nome}</td><td>${item.qtd}</td><td><div class="btn-group" role="group"><button class="btn btn-sm btn-outline-primary" onclick="openAddStockModal('${item.nome.replace(/'/g, "\\'")}', ${item.qtd})">Adicionar</button><button class="btn btn-sm btn-outline-danger" onclick="deleteItem('${item.nome.replace(/'/g, "\\'")}')">Excluir</button></div></td></tr>`;
+                        });
+                        html += '</tbody></table></div>';
+                    });
+                }
+                inventoryDiv.innerHTML = html;
+                filterInventory(); // Aplica o filtro atual caso haja algo no campo de busca
+            } catch (error) { console.error('Falha ao carregar inventário:', error); }
+        }
+
+        async function fetchOrders() {
+            try {
+                const data = await apiCall('orders');
+                const ordersDiv = document.getElementById('orders-display');
+                let html = `<table class="table table-sm table-hover align-middle"><thead class="table-light"><tr><th style="width: 150px;">ID do Pedido</th><th>Data</th><th>Solicitante</th><th>Item (Qtd)</th><th style="width: 180px;">Status</th></tr></thead><tbody>`;
+                if (!Array.isArray(data) || data.length === 0) {
+                    html += `<tr><td colspan="5" class="text-center text-muted p-4">Nenhum pedido encontrado.</td></tr>`;
+                } else {
+                    data.forEach(order => {
+                        const orderDate = new Date(order.timestamp).toLocaleDateString('pt-BR');
+                        let statusClass = {'Recebido':'status-recebido', 'Em separação':'status-em-separacao', 'Concluído':'status-concluido'}[order.status] || '';
+                        html += `<tr><td><code>${order.pedidoId}</code></td><td>${orderDate}</td><td>${order.solicitante} (${order.setor})</td><td>${order.item} (${order.qtd})</td>
+                                   <td><select class="form-select form-select-sm status-select ${statusClass}" onchange="updateStatus('${order.pedidoId}', this.value, this)">
+                                       <option value="Recebido" ${order.status === 'Recebido' ? 'selected' : ''}>Recebido</option>
+                                       <option value="Em separação" ${order.status === 'Em separação' ? 'selected' : ''}>Em separação</option>
+                                       <option value="Concluído" ${order.status === 'Concluído' ? 'selected' : ''}>Concluído</option>
+                                     </select></td></tr>`;
+                    });
+                }
+                html += '</tbody></table>';
+                ordersDiv.innerHTML = html;
+            } catch (error) { console.error('Falha ao carregar pedidos:', error); }
+        }
+        
+        async function updateStatus(pedidoId, newStatus, selectElement) {
+            selectElement.className = 'form-select form-select-sm status-select ';
+            if (newStatus === 'Recebido') selectElement.classList.add('status-recebido');
+            else if (newStatus === 'Em separação') selectElement.classList.add('status-em-separacao');
+            else if (newStatus === 'Concluído') selectElement.classList.add('status-concluido');
+            selectElement.disabled = true;
+            try {
+                await apiCall(null, { action: 'updateOrderStatus', pedidoId, newStatus });
+            } catch (error) {
+                alert(`Erro ao atualizar status: ${error.message}`);
+            } finally {
+                selectElement.disabled = false;
+            }
+        }
+
+        let currentItemName = '';
+        function openAddStockModal(itemName, currentStock) {
+            currentItemName = itemName;
+            document.getElementById('modalTitle').textContent = `Adicionar Estoque para ${itemName}`;
+            document.getElementById('itemName').textContent = itemName;
+            document.getElementById('currentStock').textContent = currentStock;
+            document.getElementById('quantityToAdd').value = '';
+            addStockModal.show();
+        }
+
+        async function deleteItem(itemName) {
+            if (!confirm(`Tem certeza que deseja excluir o item "${itemName}"? Esta ação não pode ser desfeita.`)) return;
+            try {
+                await apiCall(null, { action: 'deleteItem', itemName: itemName });
+                await fetchInventory();
+            } catch (error) { alert(`Não foi possível excluir o item: ${error.message}`); }
+        }
+
+        document.getElementById('saveStockButton').addEventListener('click', async (e) => {
+            const btn = e.target;
+            const quantityToAdd = parseInt(document.getElementById('quantityToAdd').value);
+            if (!quantityToAdd || quantityToAdd <= 0) { alert('Insira uma quantidade válida.'); return; }
+            btn.disabled = true; btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
+            try {
+                await apiCall(null, { action: 'addStock', itemName: currentItemName, quantityToAdd: quantityToAdd });
+                addStockModal.hide();
+                await fetchInventory();
+            } catch (error) { alert('Erro ao salvar: ' + error.message); } 
+            finally { btn.disabled = false; btn.innerHTML = 'Salvar'; }
+        });
+
+        document.getElementById('saveNewItemButton').addEventListener('click', async (e) => {
+            const btn = e.target;
+            const newItemName = document.getElementById('newItemName').value.trim();
+            const initialQuantity = parseInt(document.getElementById('initialQuantity').value);
+            const category = document.getElementById('itemCategory').value;
+            if (!newItemName || !category || initialQuantity < 0) { alert('Preencha todos os campos.'); return; }
+            btn.disabled = true; btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
+            try {
+                await apiCall(null, { action: 'addNewItem', itemName: newItemName, initialQuantity: initialQuantity, category: category });
+                addNewItemModal.hide();
+                await fetchInventory();
+            } catch (error) { alert('Erro ao salvar novo item: ' + error.message); } 
+            finally { btn.disabled = false; btn.innerHTML = 'Salvar Novo Material'; }
+        });
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            const tabs = document.querySelectorAll('#myTab button');
+            tabs.forEach(tab => tab.addEventListener('shown.bs.tab', (event) => {
+                const targetId = event.target.id;
+                if(targetId === 'inventory-tab') fetchInventory();
+                if(targetId === 'orders-tab') fetchOrders();
+            }));
+            fetchInventory();
+        });
+    </script>
+</body>
+</html>
