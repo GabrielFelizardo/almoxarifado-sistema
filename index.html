@@ -7,36 +7,18 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root {
-            --primary-color: #4A90E2; --secondary-color: #6c757d; --background-light: #f4f7f6;
-            --card-background: #ffffff; --text-dark: #343a40; --text-muted: #868e96;
-            --border-color: #e9ecef; --success-color: #5cb85c; --danger-color: #d9534f;
-        }
-        body { font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: var(--background-light); color: var(--text-dark); line-height: 1.6; }
-        .container { max-width: 800px; }
-        .card { border: none; border-radius: 12px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08); background-color: var(--card-background); }
-        .card-header { background-color: var(--primary-color); color: white; border-radius: 12px 12px 0 0; padding: 1.5rem; text-align: center; }
-        .card-header h3 { font-weight: 600; margin-bottom: 0.5rem; }
-        .card-header p { font-size: 0.95rem; opacity: 0.9; }
-        .form-label { font-weight: 500; color: var(--text-dark); margin-bottom: 0.5rem; }
-        .form-control, .form-select { border-radius: 8px; border: 1px solid var(--border-color); padding: 0.75rem 1rem; transition: all 0.2s ease-in-out; }
-        .form-control:focus, .form-select:focus { border-color: var(--primary-color); box-shadow: 0 0 0 0.25rem rgba(74, 144, 226, 0.25); }
-        .input-group .btn { border-radius: 8px; }
-        .input-group .btn-danger { background-color: var(--danger-color); border-color: var(--danger-color); }
-        .btn-primary { background-color: var(--primary-color); border-color: var(--primary-color); border-radius: 8px; padding: 0.75rem 1.25rem; font-weight: 500; transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s; }
-        .btn-primary:hover { background-color: #3a7bd5; border-color: #3a7bd5; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); }
-        .btn-success { background-color: var(--success-color); border-color: var(--success-color); border-radius: 8px; padding: 0.85rem 1.5rem; font-weight: 600; transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s; }
-        .btn-success:hover { background-color: #4CAF50; border-color: #4CAF50; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); }
-        hr { border-top: 1px solid var(--border-color); margin: 2rem 0; }
-        .outro-input { display: none; margin-top: 10px; border-radius: 8px; }
-        .alert { border-radius: 8px; padding: 1rem 1.5rem; }
-        #loading-materiais { color: var(--text-muted); padding: 1rem 0; display: flex; align-items: center; justify-content: center; }
+        :root { --primary-color: #4A90E2; --background-light: #f4f7f6; }
+        body { font-family: 'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,'Helvetica Neue',Arial,sans-serif; background-color: var(--background-light); }
+        .card { border: none; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+        .card-header { background-color: var(--primary-color); color: white; border-radius: 12px 12px 0 0; padding: 1.5rem; }
+        .form-control, .form-select { border-radius: 8px; }
+        .btn { border-radius: 8px; }
     </style>
 </head>
 <body>
-    <div class="container my-5">
+    <div class="container my-5" style="max-width: 800px;">
         <div class="card shadow-sm">
-            <div class="card-header">
+            <div class="card-header text-center">
                 <h3><i class="fas fa-box-open"></i> Formulário de Pedido de Material</h3>
                 <p class="mb-0">Secretaria de Desenvolvimento</p>
             </div>
@@ -45,18 +27,29 @@
                     <fieldset id="form-fieldset" disabled>
                         <h5 class="mb-3">Informações do Solicitante</h5>
                         <div class="row">
-                            <div class="col-md-6 mb-3"><label for="solicitante" class="form-label">Nome Completo</label><input type="text" class="form-control" id="solicitante" required></div>
-                            <div class="col-md-6 mb-3"><label for="setor" class="form-label">Setor</label><select class="form-select" id="setor" required><option value="" selected disabled>Selecione...</option><option>Administrativo</option><option>Financeiro</option><option>RH</option><option>TI</option><option>Operacional</option></select></div>
+                            <div class="col-md-6 mb-3">
+                                <label for="solicitante" class="form-label">Nome Completo</label>
+                                <input type="text" class="form-control" id="solicitante" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="idFuncional" class="form-label">ID Funcional / Centro de Custo (Opcional)</label>
+                                <input type="text" class="form-control" id="idFuncional">
+                            </div>
+                            <div class="col-12 mb-3">
+                                <label for="setor" class="form-label">Setor</label>
+                                <select class="form-select" id="setor" required>
+                                    <option value="" selected disabled>Selecione seu setor...</option>
+                                    <option>GABSEC</option><option>CHEGAB</option><option>DGAF</option><option>SUPGP</option>
+                                    <option>SUBICS</option><option>SUBAPE</option><option>SUBACOM</option><option>ASSJUR</option><option>SUBEXE</option>
+                                </select>
+                            </div>
                         </div>
-                        <hr>
+                        <hr class="my-4">
                         <h5 class="mb-3">Itens do Pedido</h5>
-                        <div id="loading-materiais">
-                            <div class="spinner-border spinner-border-sm" role="status"></div>
-                            <span class="ms-2">Carregando materiais...</span>
-                        </div>
+                        <div id="loading-materiais" class="text-center"><div class="spinner-border spinner-border-sm" role="status"></div><span class="ms-2">Carregando materiais...</span></div>
                         <div id="itens-container"></div>
                         <button type="button" class="btn btn-primary btn-sm" id="adicionarItem"><i class="fas fa-plus"></i> Adicionar Item</button>
-                        <hr>
+                        <hr class="my-4">
                         <div class="mb-3"><label for="justificativa" class="form-label">Justificativa / Observações</label><textarea class="form-control" id="justificativa" rows="3"></textarea></div>
                         <div class="d-grid gap-2 mt-4"><button type="submit" class="btn btn-success btn-lg" id="btn-enviar"><i class="fas fa-paper-plane"></i> Enviar Pedido</button></div>
                     </fieldset>
@@ -77,104 +70,27 @@
         const itensContainer = document.getElementById('itens-container');
         const btnEnviar = document.getElementById('btn-enviar');
         const alerta = document.getElementById('alerta');
-        
         let materialOptionsHtml = '';
 
-        function criarOpcoesDeMaterial(data) {
-            let html = '<option value="" selected disabled>Selecione um item...</option>';
-            const sortedCategories = Object.keys(data).sort();
-            
-            sortedCategories.forEach(category => {
-                html += `<optgroup label="${category}">`;
-                const sortedItems = data[category].sort((a, b) => a.nome.localeCompare(b.nome));
-                sortedItems.forEach(item => {
-                    html += `<option value="${item.nome}">${item.nome}</option>`;
-                });
-                html += `</optgroup>`;
-            });
-
-            html += '<option value="Outros">Outros</option>';
-            return html;
-        }
-
-        const adicionarItem = () => {
-            if (!materialOptionsHtml) {
-                alert("A lista de materiais ainda está carregando. Por favor, aguarde.");
-                return;
-            }
-            const itemDiv = document.createElement('div');
-            itemDiv.classList.add('item-row', 'mb-3');
-            itemDiv.innerHTML = `<div class="input-group"><select class="form-select item-select" required>${materialOptionsHtml}</select><input type="number" class="form-control" placeholder="Qtd." min="1" required style="max-width: 100px;"><button class="btn btn-danger" type="button" onclick="this.closest('.item-row').remove()"><i class="fas fa-trash"></i></button></div><input type="text" class="form-control outro-input" placeholder="Especifique o outro item">`;
-            itensContainer.appendChild(itemDiv);
-            
-            itemDiv.querySelector('.item-select').addEventListener('change', function() {
-                const outroInput = this.closest('.item-row').querySelector('.outro-input');
-                outroInput.style.display = this.value === 'Outros' ? 'block' : 'none';
-                outroInput.required = this.value === 'Outros';
-            });
-        };
-
-        document.addEventListener('DOMContentLoaded', () => {
-            fetch(`${SCRIPT_URL}?page=inventory`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.error) throw new Error(data.error);
-                    materialOptionsHtml = criarOpcoesDeMaterial(data);
-                    adicionarItem();
-                    loadingMateriaisDiv.style.display = 'none';
-                    formFieldset.disabled = false;
-                })
-                .catch(error => {
-                    loadingMateriaisDiv.textContent = 'Erro ao carregar materiais.';
-                    alerta.className = 'alert alert-danger';
-                    alerta.innerHTML = `Não foi possível carregar a lista de materiais do almoxarifado. Detalhe: ${error.message}`;
-                    alerta.style.display = 'block';
-                });
-        });
-        
+        function criarOpcoesDeMaterial(data) { let html = '<option value="" selected disabled>Selecione um item...</option>'; const sortedCategories = Object.keys(data).sort(); sortedCategories.forEach(category => { html += `<optgroup label="${category}">`; const sortedItems = data[category].sort((a, b) => a.nome.localeCompare(b.nome)); sortedItems.forEach(item => { html += `<option value="${item.nome}">${item.nome}</option>`; }); html += `</optgroup>`; }); html += '<option value="Outros">Outros</option>'; return html; }
+        const adicionarItem = () => { if (!materialOptionsHtml) { alert("A lista de materiais ainda está carregando."); return; } const itemDiv = document.createElement('div'); itemDiv.classList.add('item-row', 'mb-3'); itemDiv.innerHTML = `<div class="input-group"><select class="form-select item-select" required>${materialOptionsHtml}</select><input type="number" class="form-control" placeholder="Qtd." min="1" required style="max-width: 100px;"><button class="btn btn-danger" type="button" onclick="this.closest('.item-row').remove()"><i class="fas fa-trash"></i></button></div><input type="text" class="form-control outro-input" placeholder="Especifique o outro item" style="display:none; margin-top:10px;">`; itensContainer.appendChild(itemDiv); itemDiv.querySelector('.item-select').addEventListener('change', function() { const outroInput = this.closest('.item-row').querySelector('.outro-input'); outroInput.style.display = this.value === 'Outros' ? 'block' : 'none'; outroInput.required = this.value === 'Outros'; }); };
+        document.addEventListener('DOMContentLoaded', () => { fetch(`${SCRIPT_URL}?page=inventory`).then(res => res.json()).then(data => { if (data.error) throw new Error(data.error); materialOptionsHtml = criarOpcoesDeMaterial(data); adicionarItem(); loadingMateriaisDiv.style.display = 'none'; formFieldset.disabled = false; }).catch(error => { loadingMateriaisDiv.textContent = 'Erro ao carregar materiais.'; alerta.className = 'alert alert-danger'; alerta.innerHTML = `Não foi possível carregar a lista de materiais. Detalhe: ${error.message}`; alerta.style.display = 'block'; }); });
         btnAdicionarItem.addEventListener('click', adicionarItem);
 
         form.addEventListener('submit', (e) => {
             e.preventDefault();
             btnEnviar.disabled = true;
             btnEnviar.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Enviando...';
-
             const data = {
                 action: 'submitOrder',
                 solicitante: document.getElementById('solicitante').value,
+                idFuncional: document.getElementById('idFuncional').value, // <-- NOVO CAMPO
                 setor: document.getElementById('setor').value,
                 justificativa: document.getElementById('justificativa').value,
                 itens: []
             };
-
-            itensContainer.querySelectorAll('.item-row').forEach(row => {
-                let nome = row.querySelector('.item-select').value;
-                if (nome === 'Outros') { nome = row.querySelector('.outro-input').value.trim(); }
-                const qtd = row.querySelector('input[type="number"]').value;
-                if (nome && qtd > 0) data.itens.push({ nome, qtd });
-            });
-
-            fetch(SCRIPT_URL, { method: 'POST', mode: 'cors', body: JSON.stringify(data) })
-                .then(res => res.json())
-                .then(response => {
-                    alerta.style.display = 'block';
-                    if (response.result === 'success') {
-                        alerta.className = 'alert alert-success';
-                        alerta.innerHTML = '<strong>Sucesso!</strong> Seu pedido foi enviado.';
-                        form.reset();
-                        itensContainer.innerHTML = '';
-                        adicionarItem();
-                    } else { throw new Error(response.message); }
-                })
-                .catch(error => {
-                    alerta.style.display = 'block';
-                    alerta.className = 'alert alert-danger';
-                    alerta.innerHTML = `<strong>Erro!</strong> Não foi possível enviar. Detalhe: ${error.message}`;
-                })
-                .finally(() => {
-                    btnEnviar.disabled = false;
-                    btnEnviar.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar Pedido';
-                });
+            itensContainer.querySelectorAll('.item-row').forEach(row => { let nome = row.querySelector('.item-select').value; if (nome === 'Outros') { nome = row.querySelector('.outro-input').value.trim(); } const qtd = row.querySelector('input[type="number"]').value; if (nome && qtd > 0) data.itens.push({ nome, qtd }); });
+            fetch(SCRIPT_URL, { method: 'POST', mode: 'cors', body: JSON.stringify(data) }).then(res => res.json()).then(response => { alerta.style.display = 'block'; if (response.result === 'success') { alerta.className = 'alert alert-success'; alerta.innerHTML = '<strong>Sucesso!</strong> Seu pedido foi enviado.'; form.reset(); itensContainer.innerHTML = ''; adicionarItem(); } else { throw new Error(response.message); } }).catch(error => { alerta.style.display = 'block'; alerta.className = 'alert alert-danger'; alerta.innerHTML = `<strong>Erro!</strong> Não foi possível enviar. Detalhe: ${error.message}`; }).finally(() => { btnEnviar.disabled = false; btnEnviar.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar Pedido'; });
         });
     </script>
 </body>
