@@ -1,8 +1,11 @@
 // =======================================================================
-// CONFIGURAÇÃO
+// CONFIGURAÇÃO SEGURA - Lendo as Propriedades do Script
 // =======================================================================
-const SPREADSHEET_ID = "1aOWeZYIo1Che6vlj7TPwasVcxmR97eeq83WsWsDtP_I";
-const EMAIL_DESTINO = "gfelizardo14@gmail.com";
+const SCRIPT_PROPERTIES = PropertiesService.getScriptProperties();
+const SPREADSHEET_ID = SCRIPT_PROPERTIES.getProperty('SPREADSHEET_ID');
+const EMAIL_DESTINO = SCRIPT_PROPERTIES.getProperty('EMAIL_DESTINO');
+// =======================================================================
+
 const SHEET_NAME_PEDIDOS = "Pedidos";
 const SHEET_NAME_ESTOQUE = "Estoque";
 const LOW_STOCK_THRESHOLD = 10;
