@@ -45,9 +45,8 @@
             color: white;
             padding: 1rem 0;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            position: sticky;
-            top: 0;
-            z-index: 1000;
+            margin-bottom: 1.5rem;
+            border-radius: 8px 8px 0 0;
         }
 
         .gov-header .container-fluid {
@@ -116,6 +115,15 @@
             max-width: 1600px;
             margin: 0 auto;
             padding: 1.5rem;
+        }
+
+        #mainContent {
+            padding: 0;
+        }
+
+        #mainContent .gov-header {
+            margin: -1.5rem -1.5rem 1.5rem -1.5rem;
+            border-radius: 0;
         }
 
         /* Card Principal */
@@ -654,11 +662,143 @@
         .main-card {
             animation: fadeIn 0.4s ease-out;
         }
+
+        /* Auth Overlay */
+        .auth-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+
+        .auth-modal {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 90%;
+            overflow: hidden;
+            animation: slideUp 0.4s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .auth-header {
+            background: var(--primary);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .auth-logo {
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            font-size: 1.75rem;
+        }
+
+        .auth-header h3 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .auth-header p {
+            margin: 0;
+            opacity: 0.9;
+            font-size: 0.9rem;
+        }
+
+        .auth-body {
+            padding: 2rem;
+        }
+
+        .auth-body .form-label {
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .auth-body .form-control {
+            border: 2px solid var(--border);
+            padding: 0.75rem;
+            font-size: 1rem;
+        }
+
+        .auth-body .form-control:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+        }
+
+        .auth-body .alert {
+            padding: 0.75rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 <body>
+    <!-- Modal de Autenticação -->
+    <div class="auth-overlay" id="authOverlay">
+        <div class="auth-modal">
+            <div class="auth-header">
+                <div class="auth-logo">
+                    <i class="fas fa-lock"></i>
+                </div>
+                <h3>Acesso Restrito</h3>
+                <p>Painel Administrativo - SEDEICS</p>
+            </div>
+            <div class="auth-body">
+                <form id="loginForm">
+                    <div class="mb-3">
+                        <label for="passwordInput" class="form-label">
+                            <i class="fas fa-key"></i> Senha de Acesso
+                        </label>
+                        <input 
+                            type="password" 
+                            class="form-control" 
+                            id="passwordInput" 
+                            placeholder="Digite a senha"
+                            required
+                            autocomplete="off"
+                        >
+                    </div>
+                    <div id="errorMessage" class="alert alert-danger" style="display: none;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Senha incorreta. Tente novamente.
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100" id="loginButton">
+                        <i class="fas fa-sign-in-alt"></i> Acessar Painel
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Header Institucional -->
-    <div class="gov-header">
+    <div class="gov-header" id="govHeader" style="display: none;">
         <div class="container-fluid">
             <div class="gov-brand">
                 <div class="gov-logo">RJ</div>
@@ -679,7 +819,7 @@
     </div>
 
     <!-- Container Principal -->
-    <div class="main-container">
+    <div class="main-container" id="mainContent" style="display: none;">
         <div class="main-card">
             <!-- Tabs -->
             <ul class="nav nav-tabs" id="myTab" role="tablist">
@@ -833,6 +973,68 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // ==============================================
+        // AUTENTICAÇÃO
+        // ==============================================
+        const ADMIN_PASSWORD = 'hkIya]436c<|';
+        const SESSION_KEY = 'sedeics_auth';
+
+        // Verificar se já está autenticado
+        function checkAuth() {
+            const isAuthenticated = sessionStorage.getItem(SESSION_KEY);
+            if (isAuthenticated === 'true') {
+                showMainContent();
+            }
+        }
+
+        // Mostrar conteúdo principal
+        function showMainContent() {
+            document.getElementById('authOverlay').style.display = 'none';
+            document.getElementById('govHeader').style.display = 'block';
+            document.getElementById('mainContent').style.display = 'block';
+            // Carregar dados iniciais
+            fetchInventory();
+        }
+
+        // Login
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const passwordInput = document.getElementById('passwordInput');
+            const errorMessage = document.getElementById('errorMessage');
+            const loginButton = document.getElementById('loginButton');
+            
+            loginButton.disabled = true;
+            loginButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Verificando...';
+            
+            // Simular delay de verificação
+            setTimeout(() => {
+                if (passwordInput.value === ADMIN_PASSWORD) {
+                    sessionStorage.setItem(SESSION_KEY, 'true');
+                    errorMessage.style.display = 'none';
+                    showMainContent();
+                } else {
+                    errorMessage.style.display = 'block';
+                    passwordInput.value = '';
+                    passwordInput.focus();
+                    // Shake animation
+                    errorMessage.style.animation = 'shake 0.5s';
+                    setTimeout(() => {
+                        errorMessage.style.animation = '';
+                    }, 500);
+                }
+                
+                loginButton.disabled = false;
+                loginButton.innerHTML = '<i class="fas fa-sign-in-alt"></i> Acessar Painel';
+            }, 800);
+        });
+
+        // Verificar ao carregar a página
+        checkAuth();
+
+        // ==============================================
+        // CÓDIGO PRINCIPAL DO SISTEMA
+        // ==============================================
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzGhyNSo1-w9TDM4BmtkMWTn6bLdwbnkcupdr7i5zZaqD6nrcMnqvPnKncVn8_nSb3A/exec";
         const LOW_STOCK_THRESHOLD = 10;
         const HIGH_STOCK_THRESHOLD = 100;
@@ -1291,7 +1493,7 @@
                 });
             });
             
-            fetchInventory();
+            // O inventário será carregado após o login
         });
     </script>
 </body>
