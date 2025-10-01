@@ -3,81 +3,833 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel de Controle - Almoxarifado</title>
+    <title>Painel de Controle - Almoxarifado SEDEICS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --primary-color: #4A90E2; --secondary-color: #6c757d; --background-light: #f4f7f6;
-            --card-background: #ffffff; --text-dark: #343a40; --text-muted: #868e96;
-            --border-color: #e9ecef; --success-color: #5cb85c; --danger-color: #d9534f;
-            --info-color: #5bc0de; --sheets-green: #188038;
+            /* Paleta Profissional Institucional */
+            --primary: #1e3a8a;
+            --primary-light: #3b82f6;
+            --secondary: #475569;
+            --accent: #0369a1;
+            --success: #047857;
+            --warning: #d97706;
+            --danger: #b91c1c;
+            --info: #0891b2;
+            --background: #f8fafc;
+            --card-bg: #ffffff;
+            --border: #e2e8f0;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.08);
         }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: var(--background-light); }
-        .container { max-width: 1400px; } /* Aumentado para mais espaço */
-        .card { border: none; border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.07); }
-        .card-header { background: linear-gradient(135deg, var(--primary-color), var(--info-color)); color: white; border-radius: 12px 12px 0 0; padding: 1.5rem; text-align: center; border-bottom: none; }
-        .nav-tabs { border-bottom-color: var(--border-color); }
-        .nav-link { color: var(--text-muted); font-weight: 500; border-radius: 8px 8px 0 0 !important; cursor: pointer; }
-        .nav-link.active { color: var(--primary-color); background-color: var(--card-background); border-bottom: 3px solid var(--primary-color) !important; font-weight: 600; }
-        .table-responsive { max-height: 65vh; overflow-y: auto; }
-        .table thead { position: sticky; top: -1px; background-color: var(--background-light); z-index: 10; }
-        .kpi-card { border: 1px solid var(--border-color); border-radius: 10px; padding: 1.5rem; text-align: center; background-color: #fff; }
-        .kpi-card .value { font-size: 2.5rem; font-weight: 700; color: var(--primary-color); }
-        .kpi-card .label { font-size: 1rem; color: var(--text-muted); font-weight: 500; }
-        .status-select { border-radius: 6px; font-weight: 500; border-width: 2px; }
-        .status-recebido { background-color: #e3f2fd; border-color: #90caf9; color: #0d6efd; }
-        .status-em-separacao { background-color: #fff8e1; border-color: #ffe082; color: #f57f17; }
-        .status-concluido { background-color: #e8f5e9; border-color: #a5d6a7; color: #1e8e3e; }
-        .btn-sheets { background-color: var(--sheets-green); color: white; border-color: var(--sheets-green); }
-        .btn-sheets:hover { background-color: #136c2e; border-color: #136c2e; }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--background);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* Header Institucional */
+        .gov-header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            color: white;
+            padding: 1rem 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .gov-header .container-fluid {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .gov-brand {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .gov-logo {
+            width: 45px;
+            height: 45px;
+            background: white;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            color: var(--primary);
+            font-size: 1.3rem;
+        }
+
+        .gov-title h1 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .gov-title p {
+            font-size: 0.8rem;
+            margin: 0;
+            opacity: 0.9;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-header {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+        }
+
+        .btn-header:hover {
+            background: rgba(255, 255, 255, 0.25);
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        /* Container Principal */
+        .main-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+
+        /* Card Principal */
+        .main-card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        /* Tabs */
+        .nav-tabs {
+            border-bottom: 2px solid var(--border);
+            background: #f8fafc;
+            padding: 0 1.5rem;
+        }
+
+        .nav-link {
+            color: var(--text-secondary);
+            font-weight: 600;
+            border: none;
+            padding: 1rem 1.5rem;
+            transition: all 0.2s ease;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+        }
+
+        .nav-link:hover {
+            color: var(--primary);
+            background: rgba(30, 58, 138, 0.05);
+        }
+
+        .nav-link.active {
+            color: var(--primary);
+            background: white;
+            border-bottom-color: var(--primary);
+        }
+
+        .nav-link i {
+            margin-right: 0.5rem;
+        }
+
+        /* Tab Content */
+        .tab-content {
+            padding: 2rem 1.5rem;
+        }
+
+        /* Toolbar */
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        /* Search Bar */
+        .search-container {
+            position: relative;
+            max-width: 400px;
+            flex: 1;
+        }
+
+        .search-input {
+            width: 100%;
+            border: 2px solid var(--border);
+            border-radius: 6px;
+            padding: 0.65rem 1rem 0.65rem 2.75rem;
+            transition: all 0.2s ease;
+        }
+
+        .search-input:focus {
+            border-color: var(--primary);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+        }
+
+        /* KPI Cards */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.25rem;
+            margin-bottom: 2rem;
+        }
+
+        .kpi-card {
+            background: white;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            transition: all 0.2s ease;
+        }
+
+        .kpi-card:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-2px);
+        }
+
+        .kpi-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .kpi-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .kpi-icon.primary { background: var(--primary); }
+        .kpi-icon.success { background: var(--success); }
+        .kpi-icon.warning { background: var(--warning); }
+        .kpi-icon.danger { background: var(--danger); }
+
+        .kpi-value {
+            font-size: 2.25rem;
+            font-weight: 800;
+            color: var(--primary);
+            line-height: 1;
+            margin-bottom: 0.5rem;
+        }
+
+        .kpi-label {
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .kpi-change {
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .kpi-change.positive { color: var(--success); }
+        .kpi-change.negative { color: var(--danger); }
+
+        /* Category Section */
+        .category-section {
+            margin-bottom: 2rem;
+        }
+
+        .category-header {
+            background: #f8fafc;
+            border-left: 4px solid var(--primary);
+            padding: 1rem 1.25rem;
+            margin-bottom: 1rem;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .category-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .category-title i {
+            color: var(--primary);
+            font-size: 1.1rem;
+        }
+
+        .category-badge {
+            background: var(--primary);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        /* Tables */
+        .table-container {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .table {
+            margin: 0;
+        }
+
+        .table thead th {
+            background: #f8fafc;
+            color: var(--text-primary);
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 0.5px;
+            border: none;
+            padding: 1rem;
+        }
+
+        .table tbody tr {
+            transition: all 0.2s ease;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .table tbody tr:hover {
+            background: #f8fafc;
+        }
+
+        .table tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        .table td {
+            padding: 1rem;
+            vertical-align: middle;
+        }
+
+        /* SKU Code */
+        .sku-code {
+            font-family: 'Courier New', monospace;
+            background: #dbeafe;
+            color: var(--accent);
+            padding: 0.35rem 0.75rem;
+            border-radius: 6px;
+            font-weight: 700;
+            display: inline-block;
+            font-size: 0.85rem;
+        }
+
+        /* Stock Badge */
+        .stock-badge {
+            padding: 0.4rem 0.85rem;
+            border-radius: 6px;
+            font-weight: 700;
+            display: inline-block;
+            min-width: 50px;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .stock-low {
+            background: #fee2e2;
+            color: var(--danger);
+        }
+
+        .stock-medium {
+            background: #fed7aa;
+            color: var(--warning);
+        }
+
+        .stock-high {
+            background: #d1fae5;
+            color: var(--success);
+        }
+
+        /* Status Select */
+        .status-select {
+            border: 2px solid;
+            border-radius: 6px;
+            font-weight: 600;
+            padding: 0.5rem 0.75rem;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+        }
+
+        .status-recebido {
+            background: #dbeafe;
+            border-color: var(--info);
+            color: #075985;
+        }
+
+        .status-em-separacao {
+            background: #fef3c7;
+            border-color: var(--warning);
+            color: #92400e;
+        }
+
+        .status-concluido {
+            background: #d1fae5;
+            border-color: var(--success);
+            color: #065f46;
+        }
+
+        /* Buttons */
+        .btn {
+            border-radius: 6px;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            transition: all 0.2s ease;
+            border: none;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent);
+            transform: translateY(-1px);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+            transform: translateY(-1px);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+            transform: translateY(-1px);
+        }
+
+        .btn-outline-secondary {
+            border: 2px solid var(--border);
+            color: var(--text-secondary);
+            background: white;
+        }
+
+        .btn-outline-secondary:hover {
+            background: #f8fafc;
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .btn i {
+            margin-right: 0.35rem;
+        }
+
+        /* Top Items Section */
+        .top-items-section {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+        }
+
+        .top-items-section h5 {
+            color: var(--text-primary);
+            font-weight: 700;
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .top-items-section h5 i {
+            color: var(--primary);
+        }
+
+        .list-group-item {
+            border: none;
+            border-radius: 6px;
+            padding: 0.875rem;
+            margin-bottom: 0.5rem;
+            background: #f8fafc;
+            transition: all 0.2s ease;
+        }
+
+        .list-group-item:hover {
+            background: white;
+            box-shadow: var(--shadow);
+            transform: translateX(3px);
+        }
+
+        .badge {
+            padding: 0.4rem 0.75rem;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+
+        .bg-primary { background: var(--primary) !important; }
+        .bg-success { background: var(--success) !important; }
+        .bg-danger { background: var(--danger) !important; }
+
+        /* Loading */
+        #loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 2rem 3rem;
+            border-radius: 8px;
+            box-shadow: var(--shadow-lg);
+            z-index: 9999;
+        }
+
+        .spinner-border {
+            width: 2.5rem;
+            height: 2.5rem;
+            border-width: 0.3rem;
+            color: var(--primary);
+        }
+
+        /* Alert */
+        .alert {
+            border-radius: 6px;
+            border: none;
+            padding: 1rem 1.25rem;
+            box-shadow: var(--shadow);
+        }
+
+        .alert-danger {
+            background: #fee2e2;
+            color: var(--danger);
+            border-left: 4px solid var(--danger);
+        }
+
+        /* Modal */
+        .modal-content {
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .modal-header {
+            background: var(--primary);
+            color: white;
+            border-radius: 8px 8px 0 0;
+            padding: 1.25rem 1.5rem;
+            border: none;
+        }
+
+        .modal-title {
+            font-weight: 700;
+        }
+
+        .btn-close {
+            filter: brightness(0) invert(1);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 2rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-state i {
+            font-size: 3.5rem;
+            color: var(--border);
+            margin-bottom: 1rem;
+        }
+
+        .empty-state h5 {
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        /* Footer */
+        .page-footer {
+            text-align: center;
+            padding: 2rem 1rem 1rem;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .page-footer .copyright {
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .page-footer .developer {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            opacity: 0.8;
+        }
+
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .main-container {
+                padding: 1rem;
+            }
+
+            .tab-content {
+                padding: 1.5rem 1rem;
+            }
+
+            .toolbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .search-container {
+                max-width: none;
+            }
+
+            .kpi-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .nav-link {
+                padding: 0.875rem 1rem;
+                font-size: 0.9rem;
+            }
+        }
+
+        /* Animação */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .main-card {
+            animation: fadeIn 0.4s ease-out;
+        }
     </style>
 </head>
 <body>
-    <div class="container my-5">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h3 class="mb-0"><i class="fas fa-chart-line"></i> Painel de Controle do Almoxarifado</h3>
-                <div>
-                    <a href="index.html" target="_blank" class="btn btn-light btn-sm"><i class="fas fa-edit"></i> Acessar Formulário</a>
-                    <a href="https://docs.google.com/spreadsheets/d/1aOWeZYIo1Che6vlj7TPwasVcxmR97eeq83WsWsDtP_I/edit" target="_blank" class="btn btn-sheets btn-sm">
-                        <i class="fas fa-table"></i> Acessar Planilha
-                    </a>
+    <!-- Header Institucional -->
+    <div class="gov-header">
+        <div class="container-fluid">
+            <div class="gov-brand">
+                <div class="gov-logo">RJ</div>
+                <div class="gov-title">
+                    <h1>SEDEICS - Painel de Controle do Almoxarifado</h1>
+                    <p>Secretaria de Desenvolvimento Econômico, Indústria, Comércio e Serviços</p>
                 </div>
             </div>
-            <div class="card-body p-4">
-                <ul class="nav nav-tabs" id="myTab" role="tablist">
-                    <li class="nav-item" role="presentation"><button class="nav-link active" id="inventory-tab" data-bs-toggle="tab" data-bs-target="#inventory-pane" type="button"><i class="fas fa-boxes"></i> Inventário</button></li>
-                    <li class="nav-item" role="presentation"><button class="nav-link" id="orders-tab" data-bs-toggle="tab" data-bs-target="#orders-pane" type="button"><i class="fas fa-clipboard-list"></i> Gerenciar Pedidos</button></li>
-                    <li class="nav-item" role="presentation"><button class="nav-link" id="analytics-tab" data-bs-toggle="tab" data-bs-target="#analytics-pane" type="button"><i class="fas fa-chart-pie"></i> Relatórios</button></li>
-                </ul>
-                <div class="tab-content pt-3" id="myTabContent">
-                    <div class="tab-pane fade show active" id="inventory-pane" role="tabpanel">
-                        <div class="d-flex justify-content-end align-items-center mb-3">
-                            <button class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#addNewItemModal"><i class="fas fa-plus"></i> Novo Material</button>
-                            <button class="btn btn-outline-secondary" onclick="fetchInventory()"><i class="fas fa-sync-alt"></i></button>
-                        </div>
-                        <div id="inventory-display" class="table-responsive"></div>
-                    </div>
-                    <div class="tab-pane fade" id="orders-pane" role="tabpanel">
-                        <div class="d-flex justify-content-end align-items-center mb-3">
-                            <button class="btn btn-outline-secondary" onclick="fetchOrders()"><i class="fas fa-sync-alt"></i></button>
-                        </div>
-                        <div id="orders-display" class="table-responsive"></div>
-                    </div>
-                    <div class="tab-pane fade" id="analytics-pane" role="tabpanel">
-                        <div class="d-flex justify-content-end align-items-center mb-3"><button class="btn btn-outline-secondary" onclick="fetchAnalytics()"><i class="fas fa-sync-alt"></i> Atualizar Relatórios</button></div>
-                        <div id="analytics-display"></div>
-                    </div>
-                </div>
-                 <div id="loading" class="text-center p-5" style="display: none;"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Carregando...</p></div>
-                 <div id="error-display" class="alert alert-danger mt-3" style="display: none;"></div>
+            <div class="header-actions">
+                <a href="index.html" target="_blank" class="btn btn-header">
+                    <i class="fas fa-edit"></i> Formulário
+                </a>
+                <a href="https://docs.google.com/spreadsheets/d/1aOWeZYIo1Che6vlj7TPwasVcxmR97eeq83WsWsDtP_I/edit" target="_blank" class="btn btn-header">
+                    <i class="fas fa-table"></i> Planilha
+                </a>
             </div>
         </div>
     </div>
 
-    <div class="modal fade" id="addStockModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="modalTitle"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><p>Item: <strong id="itemName"></strong></p><p>Estoque Atual: <strong id="currentStock"></strong></p><div class="mb-3"><label for="quantityToAdd" class="form-label">Quantidade a Adicionar:</label><input type="number" class="form-control" id="quantityToAdd" min="1" required></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-primary" id="saveStockButton">Salvar</button></div></div></div></div>
-    <div class="modal fade" id="addNewItemModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Adicionar Novo Material</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label for="newItemName" class="form-label">Nome do Novo Material:</label><input type="text" class="form-control" id="newItemName" required></div><div class="mb-3"><label for="initialQuantity" class="form-label">Quantidade Inicial:</label><input type="number" class="form-control" id="initialQuantity" min="0" value="0" required></div><div class="mb-3"><label for="itemCategory" class="form-label">Categoria:</label><select class="form-select" id="itemCategory" required><option value="" selected disabled>Selecione...</option><option>Material de Escritório</option><option>Material para Copa</option><option>Material de Limpeza</option></select></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-primary" id="saveNewItemButton">Salvar Novo Material</button></div></div></div></div>
+    <!-- Container Principal -->
+    <div class="main-container">
+        <div class="main-card">
+            <!-- Tabs -->
+            <ul class="nav nav-tabs" id="myTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="inventory-tab" data-bs-toggle="tab" data-bs-target="#inventory-pane" type="button">
+                        <i class="fas fa-boxes"></i> Inventário
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="orders-tab" data-bs-toggle="tab" data-bs-target="#orders-pane" type="button">
+                        <i class="fas fa-clipboard-list"></i> Pedidos
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="analytics-tab" data-bs-toggle="tab" data-bs-target="#analytics-pane" type="button">
+                        <i class="fas fa-chart-bar"></i> Relatórios
+                    </button>
+                </li>
+            </ul>
+
+            <!-- Tab Content -->
+            <div class="tab-content" id="myTabContent">
+                <!-- Inventário -->
+                <div class="tab-pane fade show active" id="inventory-pane" role="tabpanel">
+                    <div class="toolbar">
+                        <div class="search-container">
+                            <i class="fas fa-search search-icon"></i>
+                            <input type="text" class="form-control search-input" id="searchInventory" placeholder="Buscar materiais...">
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addNewItemModal">
+                                <i class="fas fa-plus"></i> Novo Material
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="fetchInventory()">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="inventory-display"></div>
+                </div>
+
+                <!-- Pedidos -->
+                <div class="tab-pane fade" id="orders-pane" role="tabpanel">
+                    <div class="toolbar">
+                        <div class="search-container">
+                            <i class="fas fa-search search-icon"></i>
+                            <input type="text" class="form-control search-input" id="searchOrders" placeholder="Buscar pedidos...">
+                        </div>
+                        <button class="btn btn-outline-secondary" onclick="fetchOrders()">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                    <div id="orders-display"></div>
+                </div>
+
+                <!-- Relatórios -->
+                <div class="tab-pane fade" id="analytics-pane" role="tabpanel">
+                    <div class="toolbar" style="justify-content: flex-end;">
+                        <button class="btn btn-outline-secondary" onclick="fetchAnalytics()">
+                            <i class="fas fa-sync-alt"></i> Atualizar
+                        </button>
+                    </div>
+                    <div id="analytics-display"></div>
+                </div>
+            </div>
+
+            <!-- Loading -->
+            <div id="loading" style="display: none;">
+                <div class="text-center">
+                    <div class="spinner-border" role="status"></div>
+                    <p class="mt-3 mb-0 fw-bold">Carregando...</p>
+                </div>
+            </div>
+
+            <!-- Error -->
+            <div id="error-display" class="alert alert-danger m-4" style="display: none;"></div>
+        </div>
+
+        <!-- Footer -->
+        <div class="page-footer">
+            <p class="copyright">
+                © 2025 SEDEICS - Secretaria de Desenvolvimento Econômico, Indústria, Comércio e Serviços
+            </p>
+            <p class="developer">
+                Desenvolvido por Gabriel Felizardo da Silva
+            </p>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal fade" id="addStockModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">Adicionar Estoque</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>Item:</strong> <span id="itemName"></span></p>
+                    <p><strong>Estoque Atual:</strong> <span id="currentStock" class="stock-badge"></span></p>
+                    <div class="mb-3">
+                        <label for="quantityToAdd" class="form-label fw-bold">Quantidade a Adicionar:</label>
+                        <input type="number" class="form-control" id="quantityToAdd" min="1" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="saveStockButton">
+                        <i class="fas fa-save"></i> Salvar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="addNewItemModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Adicionar Novo Material</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="newItemName" class="form-label fw-bold">Nome do Material:</label>
+                        <input type="text" class="form-control" id="newItemName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="initialQuantity" class="form-label fw-bold">Quantidade Inicial:</label>
+                        <input type="number" class="form-control" id="initialQuantity" min="0" value="0" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="itemCategory" class="form-label fw-bold">Categoria:</label>
+                        <select class="form-select" id="itemCategory" required>
+                            <option value="" selected disabled>Selecione...</option>
+                            <option>Material de Escritório</option>
+                            <option>Material para Copa</option>
+                            <option>Material de Limpeza</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="saveNewItemButton">
+                        <i class="fas fa-save"></i> Salvar Material
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -85,21 +837,462 @@
         const LOW_STOCK_THRESHOLD = 10;
         const HIGH_STOCK_THRESHOLD = 100;
 
-        const loadingDiv = document.getElementById('loading'), errorDiv = document.getElementById('error-display'), addStockModal = new bootstrap.Modal(document.getElementById('addStockModal')), addNewItemModal = new bootstrap.Modal(document.getElementById('addNewItemModal'));
-        const showLoading = (show) => { loadingDiv.style.display = show ? 'block' : 'none'; }; const showError = (message) => { errorDiv.textContent = message; errorDiv.style.display = 'block'; }; const hideMessages = () => { errorDiv.style.display = 'none'; };
-        async function apiCall(page = null, payload = null) { hideMessages(); showLoading(true); const url = page ? `${SCRIPT_URL}?page=${page}` : SCRIPT_URL; const options = payload ? { method: 'POST', mode: 'cors', body: JSON.stringify(payload) } : { method: 'GET' }; try { const response = await fetch(url, options); if (!response.ok) throw new Error(`A comunicação com o servidor falhou: ${response.statusText}`); const data = await response.json(); if (data.error || data.result === 'error') throw new Error(data.error || data.message); return data; } catch (error) { showError(error.message); throw error; } finally { showLoading(false); } }
-        async function fetchInventory() { try { const data = await apiCall('inventory'); document.getElementById('inventory-display').innerHTML = buildInventoryHtml(data); } catch (error) { console.error('Falha ao carregar inventário:', error); } }
-        async function fetchOrders() { try { const data = await apiCall('orders'); document.getElementById('orders-display').innerHTML = buildOrdersHtml(data); } catch (error) { console.error('Falha ao carregar pedidos:', error); } }
-        async function fetchAnalytics() { try { const data = await apiCall('analytics'); document.getElementById('analytics-display').innerHTML = buildAnalyticsHtml(data); } catch (error) { console.error('Falha ao carregar relatórios:', error); } }
-        function buildInventoryHtml(data) { const sortedCategories = Object.keys(data).sort(); if (sortedCategories.length === 0) return '<p class="text-center text-muted p-4">Nenhum item.</p>'; let html = ''; sortedCategories.forEach(category => { html += `<h4 class="mt-2 text-secondary">${category}</h4><table class="table table-sm table-striped table-hover align-middle"><thead class="table-light"><tr><th style="width: 120px;">Código</th><th>Item</th><th style="width: 120px;">Estoque</th><th style="width: 180px;">Ações</th></tr></thead><tbody>`; const sortedItems = data[category].sort((a, b) => a.nome.localeCompare(b.nome)); sortedItems.forEach(item => { html += `<tr><td><strong>${item.sku}</strong></td><td>${item.nome}</td><td>${item.qtd}</td><td><div class="btn-group" role="group"><button class="btn btn-sm btn-outline-primary" onclick="openAddStockModal('${item.nome.replace(/'/g, "\\'")}', ${item.qtd})">Adicionar</button><button class="btn btn-sm btn-outline-danger" onclick="deleteItem('${item.nome.replace(/'/g, "\\'")}')">Excluir</button></div></td></tr>`; }); html += '</tbody></table>'; }); return html; }
-        function buildOrdersHtml(data) { let html = `<table class="table table-sm table-hover align-middle"><thead class="table-light"><tr><th style="width: 150px;">ID Pedido</th><th>Data</th><th>Solicitante</th><th>ID Funcional</th><th>Item (Qtd)</th><th style="width: 180px;">Status</th></tr></thead><tbody>`; if (!Array.isArray(data) || data.length === 0) { html += `<tr><td colspan="6" class="text-center text-muted p-4">Nenhum pedido encontrado.</td></tr>`; } else { data.forEach(order => { const orderDate = new Date(order.timestamp).toLocaleDateString('pt-BR'); let statusClass = {'Recebido':'status-recebido', 'Em separação':'status-em-separacao', 'Concluído':'status-concluido'}[order.status] || ''; html += `<tr><td><code>${order.pedidoId}</code></td><td>${orderDate}</td><td>${order.solicitante} (${order.setor})</td><td>${order.idFuncional || 'N/A'}</td><td>${order.item} (${order.qtd})</td><td><select class="form-select form-select-sm status-select ${statusClass}" onchange="updateStatus(this, '${order.pedidoId}')"><option value="Recebido" ${order.status === 'Recebido' ? 'selected' : ''}>Recebido</option><option value="Em separação" ${order.status === 'Em separação' ? 'selected' : ''}>Em separação</option><option value="Concluído" ${order.status === 'Concluído' ? 'selected' : ''}>Concluído</option></select></td></tr>`; }); } html += '</tbody></table>'; return html; }
-        function buildAnalyticsHtml(data) { const renderList = (items, isTop, isHigh) => { if (!items || items.length === 0) return `<li class="list-group-item text-muted">Nenhum dado.</li>`; return items.map(item => `<li class="list-group-item d-flex justify-content-between align-items-center">${isTop ? item.name : item[0]} <span class="badge bg-${isHigh ? 'success' : (isTop ? 'primary' : 'danger')} rounded-pill">${isTop ? item.count : item[1]}</span></li>`).join(''); }; return `<div class="row g-4"><div class="col-md-4"><div class="kpi-card h-100"><div class="value">${data.ordersTodayCount}</div><div class="label">Pedidos Hoje</div></div></div><div class="col-md-4"><div class="kpi-card h-100"><div class="value">${data.pendingOrdersCount}</div><div class="label">Pedidos Pendentes</div></div></div><div class="col-md-4"><div class="kpi-card h-100"><div class="value text-danger">${data.lowStockItems.length}</div><div class="label">Itens com Estoque Baixo</div></div></div></div><div class="row g-4 mt-3"><div class="col-lg-4"><h5 class="mt-4">Mais Pedidos no Mês</h5><ul class="list-group">${renderList(data.mostRequestedMonth, true)}</ul></div><div class="col-lg-4"><h5 class="mt-4">Mais Pedidos na Semana</h5><ul class="list-group">${renderList(data.mostRequestedWeek, true)}</ul></div><div class="col-lg-4"><h5 class="mt-4">Mais Pedidos Hoje</h5><ul class="list-group">${renderList(data.mostRequestedDay, true)}</ul></div></div><div class="row g-4 mt-3"><div class="col-lg-6"><h5 class="mt-4">Itens com Estoque Baixo (&lt;= ${LOW_STOCK_THRESHOLD})</h5><ul class="list-group">${renderList(data.lowStockItems, false, false)}</ul></div><div class="col-lg-6"><h5 class="mt-4">Itens com Estoque Alto (&gt;= ${HIGH_STOCK_THRESHOLD})</h5><ul class="list-group">${renderList(data.highStockItems, false, true)}</ul></div></div>`; }
-        async function updateStatus(selectElement, pedidoId) { const newStatus = selectElement.value; selectElement.className = 'form-select form-select-sm status-select '; if (newStatus === 'Recebido') selectElement.classList.add('status-recebido'); else if (newStatus === 'Em separação') selectElement.classList.add('status-em-separacao'); else if (newStatus === 'Concluído') selectElement.classList.add('status-concluido'); selectElement.disabled = true; try { await apiCall(null, { action: 'updateOrderStatus', pedidoId, newStatus }); } catch (error) { alert(`Erro: ${error.message}`); } finally { selectElement.disabled = false; } }
-        let currentItemName = ''; function openAddStockModal(itemName, currentStock) { currentItemName = itemName; document.getElementById('modalTitle').textContent = `Adicionar Estoque para ${itemName}`; document.getElementById('itemName').textContent = itemName; document.getElementById('currentStock').textContent = currentStock; document.getElementById('quantityToAdd').value = ''; addStockModal.show(); }
-        async function deleteItem(itemName) { if (!confirm(`Excluir "${itemName}"?`)) return; try { await apiCall(null, { action: 'deleteItem', itemName: itemName }); await fetchInventory(); } catch (error) { alert(`Erro: ${error.message}`); } }
-        document.getElementById('saveStockButton').addEventListener('click', async (e) => { const btn = e.target; const quantityToAdd = parseInt(document.getElementById('quantityToAdd').value); if (!quantityToAdd || quantityToAdd <= 0) { alert('Quantidade inválida.'); return; } btn.disabled = true; btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`; try { await apiCall(null, { action: 'addStock', itemName: currentItemName, quantityToAdd: quantityToAdd }); addStockModal.hide(); await fetchInventory(); } catch (error) { alert(`Erro: ${error.message}`); } finally { btn.disabled = false; btn.innerHTML = 'Salvar'; } });
-        document.getElementById('saveNewItemButton').addEventListener('click', async (e) => { const btn = e.target; const newItemName = document.getElementById('newItemName').value.trim(); const initialQuantity = parseInt(document.getElementById('initialQuantity').value); const category = document.getElementById('itemCategory').value; if (!newItemName || !category || initialQuantity < 0) { alert('Preencha todos os campos.'); return; } btn.disabled = true; btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`; try { await apiCall(null, { action: 'addNewItem', itemName: newItemName, initialQuantity: initialQuantity, category: category }); addNewItemModal.hide(); await fetchInventory(); } catch (error) { alert(`Erro: ${error.message}`); } finally { btn.disabled = false; btn.innerHTML = 'Salvar Novo Material'; } });
-        document.addEventListener('DOMContentLoaded', () => { const tabs = document.querySelectorAll('#myTab button'); tabs.forEach(tab => tab.addEventListener('shown.bs.tab', (event) => { const targetId = event.target.id; if(targetId === 'inventory-tab') fetchInventory(); if(targetId === 'orders-tab') fetchOrders(); if(targetId === 'analytics-tab') fetchAnalytics(); })); fetchInventory(); });
+        const loadingDiv = document.getElementById('loading');
+        const errorDiv = document.getElementById('error-display');
+        const addStockModal = new bootstrap.Modal(document.getElementById('addStockModal'));
+        const addNewItemModal = new bootstrap.Modal(document.getElementById('addNewItemModal'));
+
+        const showLoading = (show) => loadingDiv.style.display = show ? 'block' : 'none';
+        const showError = (message) => { errorDiv.textContent = message; errorDiv.style.display = 'block'; };
+        const hideMessages = () => errorDiv.style.display = 'none';
+
+        async function apiCall(page = null, payload = null) {
+            hideMessages();
+            showLoading(true);
+            const url = page ? `${SCRIPT_URL}?page=${page}` : SCRIPT_URL;
+            const options = payload ? { method: 'POST', mode: 'cors', body: JSON.stringify(payload) } : { method: 'GET' };
+            
+            try {
+                const response = await fetch(url, options);
+                if (!response.ok) throw new Error(`Erro: ${response.statusText}`);
+                const data = await response.json();
+                if (data.error || data.result === 'error') throw new Error(data.error || data.message);
+                return data;
+            } catch (error) {
+                showError(error.message);
+                throw error;
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function fetchInventory() {
+            try {
+                const data = await apiCall('inventory');
+                document.getElementById('inventory-display').innerHTML = buildInventoryHtml(data);
+            } catch (error) {
+                console.error('Erro ao carregar inventário:', error);
+            }
+        }
+
+        async function fetchOrders() {
+            try {
+                const data = await apiCall('orders');
+                document.getElementById('orders-display').innerHTML = buildOrdersHtml(data);
+            } catch (error) {
+                console.error('Erro ao carregar pedidos:', error);
+            }
+        }
+
+        async function fetchAnalytics() {
+            try {
+                const data = await apiCall('analytics');
+                document.getElementById('analytics-display').innerHTML = buildAnalyticsHtml(data);
+            } catch (error) {
+                console.error('Erro ao carregar relatórios:', error);
+            }
+        }
+
+        function buildInventoryHtml(data) {
+            const sortedCategories = Object.keys(data).sort();
+            
+            if (sortedCategories.length === 0) {
+                return `
+                    <div class="empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <h5>Nenhum item no inventário</h5>
+                        <p>Adicione novos materiais para começar</p>
+                    </div>
+                `;
+            }
+
+            let html = '';
+            const categoryIcons = {
+                'Material de Escritório': 'fas fa-pen',
+                'Material para Copa': 'fas fa-mug-hot',
+                'Material de Limpeza': 'fas fa-broom'
+            };
+
+            sortedCategories.forEach(category => {
+                const items = data[category].sort((a, b) => a.nome.localeCompare(b.nome));
+                const icon = categoryIcons[category] || 'fas fa-box';
+                
+                html += `
+                    <div class="category-section">
+                        <div class="category-header">
+                            <div class="category-title">
+                                <i class="${icon}"></i>
+                                ${category}
+                            </div>
+                            <span class="category-badge">${items.length} itens</span>
+                        </div>
+                        <div class="table-container">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 140px;">Código</th>
+                                        <th>Material</th>
+                                        <th style="width: 130px;">Estoque</th>
+                                        <th style="width: 200px;">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                `;
+
+                items.forEach(item => {
+                    let stockClass = 'stock-high';
+                    if (item.qtd <= LOW_STOCK_THRESHOLD) stockClass = 'stock-low';
+                    else if (item.qtd <= 30) stockClass = 'stock-medium';
+
+                    html += `
+                        <tr>
+                            <td><span class="sku-code">${item.sku}</span></td>
+                            <td><strong>${item.nome}</strong></td>
+                            <td><span class="stock-badge ${stockClass}">${item.qtd}</span></td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button class="btn btn-primary" onclick="openAddStockModal('${item.nome.replace(/'/g, "\\'")}', ${item.qtd})">
+                                        <i class="fas fa-plus"></i> Adicionar
+                                    </button>
+                                    <button class="btn btn-danger" onclick="deleteItem('${item.nome.replace(/'/g, "\\'")}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            });
+
+            return html;
+        }
+
+        function buildOrdersHtml(data) {
+            if (!Array.isArray(data) || data.length === 0) {
+                return `
+                    <div class="empty-state">
+                        <i class="fas fa-clipboard-list"></i>
+                        <h5>Nenhum pedido encontrado</h5>
+                        <p>Os pedidos aparecerão aqui quando forem criados</p>
+                    </div>
+                `;
+            }
+
+            let html = `
+                <div class="table-container">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width: 140px;">ID Pedido</th>
+                                <th>Data</th>
+                                <th>Solicitante</th>
+                                <th>ID Func.</th>
+                                <th>Item (Qtd)</th>
+                                <th style="width: 200px;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            data.forEach(order => {
+                const orderDate = new Date(order.timestamp).toLocaleDateString('pt-BR');
+                let statusClass = {
+                    'Recebido': 'status-recebido',
+                    'Em separação': 'status-em-separacao',
+                    'Concluído': 'status-concluido'
+                }[order.status] || '';
+
+                html += `
+                    <tr>
+                        <td><span class="sku-code">${order.pedidoId}</span></td>
+                        <td>${orderDate}</td>
+                        <td>
+                            <strong>${order.solicitante}</strong><br>
+                            <small style="color: #64748b;">${order.setor}</small>
+                        </td>
+                        <td>${order.idFuncional || 'N/A'}</td>
+                        <td>
+                            <strong>${order.item}</strong><br>
+                            <small style="color: #64748b;">Qtd: ${order.qtd}</small>
+                        </td>
+                        <td>
+                            <select class="form-select form-select-sm status-select ${statusClass}" onchange="updateStatus(this, '${order.pedidoId}')">
+                                <option value="Recebido" ${order.status === 'Recebido' ? 'selected' : ''}>Recebido</option>
+                                <option value="Em separação" ${order.status === 'Em separação' ? 'selected' : ''}>Em separação</option>
+                                <option value="Concluído" ${order.status === 'Concluído' ? 'selected' : ''}>Concluído</option>
+                            </select>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            return html;
+        }
+
+        function buildAnalyticsHtml(data) {
+            const renderList = (items, isTop, colorClass = 'primary') => {
+                if (!items || items.length === 0) {
+                    return `<li class="list-group-item text-center" style="color: #94a3b8;">Nenhum dado disponível</li>`;
+                }
+                
+                return items.map((item, index) => {
+                    const name = isTop ? item.name : item[0];
+                    const count = isTop ? item.count : item[1];
+                    const rank = index + 1;
+                    
+                    return `
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong style="color: #1e3a8a; margin-right: 0.5rem;">#${rank}</strong>
+                                ${name}
+                            </div>
+                            <span class="badge bg-${colorClass}">${count}</span>
+                        </li>
+                    `;
+                }).join('');
+            };
+
+            return `
+                <!-- KPIs -->
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-header">
+                            <div class="kpi-icon primary">
+                                <i class="fas fa-calendar-day"></i>
+                            </div>
+                        </div>
+                        <div class="kpi-value">${data.ordersTodayCount}</div>
+                        <div class="kpi-label">Pedidos Hoje</div>
+                        <div class="kpi-change positive">
+                            <i class="fas fa-check-circle"></i> Atualizado agora
+                        </div>
+                    </div>
+                    
+                    <div class="kpi-card">
+                        <div class="kpi-header">
+                            <div class="kpi-icon warning">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                        </div>
+                        <div class="kpi-value">${data.pendingOrdersCount}</div>
+                        <div class="kpi-label">Pedidos Pendentes</div>
+                        <div class="kpi-change ${data.pendingOrdersCount > 0 ? 'negative' : 'positive'}">
+                            <i class="fas fa-${data.pendingOrdersCount > 0 ? 'exclamation' : 'check'}-circle"></i>
+                            ${data.pendingOrdersCount > 0 ? 'Requer atenção' : 'Tudo em dia'}
+                        </div>
+                    </div>
+                    
+                    <div class="kpi-card">
+                        <div class="kpi-header">
+                            <div class="kpi-icon danger">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
+                        </div>
+                        <div class="kpi-value">${data.lowStockItems.length}</div>
+                        <div class="kpi-label">Estoque Baixo</div>
+                        <div class="kpi-change ${data.lowStockItems.length > 0 ? 'negative' : 'positive'}">
+                            <i class="fas fa-${data.lowStockItems.length > 0 ? 'arrow-down' : 'check'}-circle"></i>
+                            ${data.lowStockItems.length > 0 ? 'Reposição necessária' : 'Níveis normais'}
+                        </div>
+                    </div>
+                    
+                    <div class="kpi-card">
+                        <div class="kpi-header">
+                            <div class="kpi-icon success">
+                                <i class="fas fa-boxes"></i>
+                            </div>
+                        </div>
+                        <div class="kpi-value">${data.highStockItems.length}</div>
+                        <div class="kpi-label">Estoque Alto</div>
+                        <div class="kpi-change positive">
+                            <i class="fas fa-check-circle"></i> Bem abastecido
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Top Items -->
+                <div class="row g-3 mt-2">
+                    <div class="col-lg-4">
+                        <div class="top-items-section">
+                            <h5><i class="fas fa-trophy"></i> Mais Pedidos do Mês</h5>
+                            <ul class="list-group">${renderList(data.mostRequestedMonth, true, 'primary')}</ul>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="top-items-section">
+                            <h5><i class="fas fa-fire"></i> Mais Pedidos da Semana</h5>
+                            <ul class="list-group">${renderList(data.mostRequestedWeek, true, 'primary')}</ul>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="top-items-section">
+                            <h5><i class="fas fa-star"></i> Mais Pedidos Hoje</h5>
+                            <ul class="list-group">${renderList(data.mostRequestedDay, true, 'primary')}</ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stock Alerts -->
+                <div class="row g-3 mt-2">
+                    <div class="col-lg-6">
+                        <div class="top-items-section">
+                            <h5><i class="fas fa-exclamation-circle"></i> Estoque Baixo (≤ ${LOW_STOCK_THRESHOLD})</h5>
+                            <ul class="list-group">${renderList(data.lowStockItems, false, 'danger')}</ul>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="top-items-section">
+                            <h5><i class="fas fa-check-circle"></i> Estoque Alto (≥ ${HIGH_STOCK_THRESHOLD})</h5>
+                            <ul class="list-group">${renderList(data.highStockItems, false, 'success')}</ul>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function updateStatus(selectElement, pedidoId) {
+            const newStatus = selectElement.value;
+            selectElement.className = 'form-select form-select-sm status-select ';
+            
+            if (newStatus === 'Recebido') selectElement.classList.add('status-recebido');
+            else if (newStatus === 'Em separação') selectElement.classList.add('status-em-separacao');
+            else if (newStatus === 'Concluído') selectElement.classList.add('status-concluido');
+            
+            selectElement.disabled = true;
+            
+            try {
+                await apiCall(null, { action: 'updateOrderStatus', pedidoId, newStatus });
+            } catch (error) {
+                alert(`Erro: ${error.message}`);
+            } finally {
+                selectElement.disabled = false;
+            }
+        }
+
+        let currentItemName = '';
+
+        function openAddStockModal(itemName, currentStock) {
+            currentItemName = itemName;
+            document.getElementById('modalTitle').textContent = `Adicionar Estoque`;
+            document.getElementById('itemName').textContent = itemName;
+            
+            const stockSpan = document.getElementById('currentStock');
+            stockSpan.textContent = currentStock;
+            
+            let stockClass = 'stock-high';
+            if (currentStock <= LOW_STOCK_THRESHOLD) stockClass = 'stock-low';
+            else if (currentStock <= 30) stockClass = 'stock-medium';
+            stockSpan.className = `stock-badge ${stockClass}`;
+            
+            document.getElementById('quantityToAdd').value = '';
+            addStockModal.show();
+        }
+
+        async function deleteItem(itemName) {
+            if (!confirm(`Tem certeza que deseja excluir "${itemName}"?`)) return;
+            
+            try {
+                await apiCall(null, { action: 'deleteItem', itemName });
+                await fetchInventory();
+            } catch (error) {
+                alert(`Erro: ${error.message}`);
+            }
+        }
+
+        document.getElementById('saveStockButton').addEventListener('click', async (e) => {
+            const btn = e.target;
+            const quantityToAdd = parseInt(document.getElementById('quantityToAdd').value);
+            
+            if (!quantityToAdd || quantityToAdd <= 0) {
+                alert('Quantidade inválida.');
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
+            
+            try {
+                await apiCall(null, { action: 'addStock', itemName: currentItemName, quantityToAdd });
+                addStockModal.hide();
+                await fetchInventory();
+            } catch (error) {
+                alert(`Erro: ${error.message}`);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save"></i> Salvar';
+            }
+        });
+
+        document.getElementById('saveNewItemButton').addEventListener('click', async (e) => {
+            const btn = e.target;
+            const newItemName = document.getElementById('newItemName').value.trim();
+            const initialQuantity = parseInt(document.getElementById('initialQuantity').value);
+            const category = document.getElementById('itemCategory').value;
+            
+            if (!newItemName || !category || initialQuantity < 0) {
+                alert('Preencha todos os campos corretamente.');
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
+            
+            try {
+                await apiCall(null, { action: 'addNewItem', itemName: newItemName, initialQuantity, category });
+                addNewItemModal.hide();
+                await fetchInventory();
+            } catch (error) {
+                alert(`Erro: ${error.message}`);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save"></i> Salvar Material';
+            }
+        });
+
+        // Busca em tempo real
+        document.getElementById('searchInventory')?.addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            document.querySelectorAll('#inventory-display tbody tr').forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchTerm) ? '' : 'none';
+            });
+        });
+
+        document.getElementById('searchOrders')?.addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            document.querySelectorAll('#orders-display tbody tr').forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchTerm) ? '' : 'none';
+            });
+        });
+
+        // Carregar dados ao trocar de tab
+        document.addEventListener('DOMContentLoaded', () => {
+            const tabs = document.querySelectorAll('#myTab button');
+            tabs.forEach(tab => {
+                tab.addEventListener('shown.bs.tab', (event) => {
+                    const targetId = event.target.id;
+                    if (targetId === 'inventory-tab') fetchInventory();
+                    if (targetId === 'orders-tab') fetchOrders();
+                    if (targetId === 'analytics-tab') fetchAnalytics();
+                });
+            });
+            
+            fetchInventory();
+        });
     </script>
 </body>
 </html>
