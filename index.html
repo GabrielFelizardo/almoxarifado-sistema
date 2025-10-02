@@ -41,46 +41,16 @@
         /* Header Institucional */
         .gov-header {
             background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
-            color: white;
-            padding: 1rem 0;
+            padding: 1.5rem 0;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             margin-bottom: 2rem;
+            text-align: center;
         }
 
-        .gov-header .container {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .gov-logo {
-            width: 50px;
-            height: 50px;
-            background: white;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 900;
-            color: var(--primary);
-            font-size: 1.5rem;
-        }
-
-        .gov-title {
-            flex: 1;
-        }
-
-        .gov-title h1 {
-            font-size: 1.1rem;
-            font-weight: 700;
-            margin: 0;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
-        }
-
-        .gov-title p {
-            font-size: 0.85rem;
-            margin: 0;
-            opacity: 0.9;
+        .gov-logo-img {
+            height: 140px;
+            width: auto;
+            display: inline-block;
         }
 
         /* Container Principal */
@@ -357,9 +327,9 @@
 
         /* Responsividade */
         @media (max-width: 768px) {
-            .gov-header .container {
-                flex-direction: column;
-                text-align: center;
+            .gov-logo-img {
+                height: 60px;
+                padding: 8px;
             }
 
             .card-body {
@@ -383,15 +353,11 @@
     </style>
 </head>
 <body>
-    <!-- Header Institucional -->
+    <!-- Header com Logo -->
     <div class="gov-header">
-        <div class="container">
-            <div class="gov-logo">RJ</div>
-            <div class="gov-title">
-                <h1>Secretaria de Desenvolvimento Econômico, Indústria, Comércio e Serviços</h1>
-                <p>Sistema de Gestão de Almoxarifado</p>
-            </div>
-        </div>
+        <img src="https://raw.githubusercontent.com/GabrielFelizardo/almoxarifado-sistema/main/logo.png" 
+             alt="Logo SEDEICS" 
+             class="gov-logo-img">
     </div>
 
     <!-- Container Principal -->
