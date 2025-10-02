@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            /* Paleta Profissional Institucional */
             --primary: #1e3a8a;
             --primary-light: #3b82f6;
             --secondary: #475569;
@@ -32,21 +31,26 @@
             box-sizing: border-box;
         }
 
+        html {
+            margin: 0;
+            padding: 0;
+        }
+
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background-color: var(--background);
             color: var(--text-primary);
             line-height: 1.6;
+            margin: 0;
+            padding: 0;
         }
 
-        /* Header Institucional */
+        /* Header com Logo */
         .gov-header {
             background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
-            color: white;
-            padding: 1rem 0;
+            padding: 1.25rem 0;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 1.5rem;
-            border-radius: 8px 8px 0 0;
+            margin-bottom: 0;
         }
 
         .gov-header .container-fluid {
@@ -57,35 +61,19 @@
             flex-wrap: wrap;
         }
 
-        .gov-brand {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
+        .gov-logo-img {
+            height: 90px;
+            width: auto;
+            display: block;
         }
 
-        .gov-logo {
-            width: 45px;
-            height: 45px;
-            background: white;
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 900;
-            color: var(--primary);
-            font-size: 1.3rem;
-        }
-
-        .gov-title h1 {
+        .system-title {
+            color: white;
             font-size: 1.1rem;
-            font-weight: 700;
+            font-weight: 600;
             margin: 0;
-        }
-
-        .gov-title p {
-            font-size: 0.8rem;
-            margin: 0;
-            opacity: 0.9;
+            text-align: center;
+            flex: 1;
         }
 
         .header-actions {
@@ -114,7 +102,7 @@
         .main-container {
             max-width: 1600px;
             margin: 0 auto;
-            padding: 1.5rem;
+            padding: 0 1.5rem 1.5rem;
         }
 
         #mainContent {
@@ -122,7 +110,7 @@
         }
 
         #mainContent .gov-header {
-            margin: -1.5rem -1.5rem 1.5rem -1.5rem;
+            margin: 0 0 1.5rem 0;
             border-radius: 0;
         }
 
@@ -651,6 +639,17 @@
                 padding: 0.875rem 1rem;
                 font-size: 0.9rem;
             }
+
+            .gov-header .container-fluid {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+            }
+
+            .header-actions {
+                width: 100%;
+                justify-content: center;
+            }
         }
 
         /* Animação */
@@ -797,16 +796,13 @@
         </div>
     </div>
 
-    <!-- Header Institucional -->
+    <!-- Header com Logo -->
     <div class="gov-header" id="govHeader" style="display: none;">
         <div class="container-fluid">
-            <div class="gov-brand">
-                <div class="gov-logo">RJ</div>
-                <div class="gov-title">
-                    <h1>SEDEICS - Painel de Controle do Almoxarifado</h1>
-                    <p>Secretaria de Desenvolvimento Econômico, Indústria, Comércio e Serviços</p>
-                </div>
-            </div>
+            <img src="https://raw.githubusercontent.com/GabrielFelizardo/almoxarifado-sistema/main/logo.png" 
+                 alt="Logo SEDEICS" 
+                 class="gov-logo-img">
+            <h1 class="system-title">Sistema de Gestão de Almoxarifado</h1>
             <div class="header-actions">
                 <a href="index.html" target="_blank" class="btn btn-header">
                     <i class="fas fa-edit"></i> Formulário
@@ -973,13 +969,10 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // ==============================================
         // AUTENTICAÇÃO
-        // ==============================================
         const ADMIN_PASSWORD = 'hkIya]436c<|';
         const SESSION_KEY = 'sedeics_auth';
 
-        // Verificar se já está autenticado
         function checkAuth() {
             const isAuthenticated = sessionStorage.getItem(SESSION_KEY);
             if (isAuthenticated === 'true') {
@@ -987,16 +980,13 @@
             }
         }
 
-        // Mostrar conteúdo principal
         function showMainContent() {
             document.getElementById('authOverlay').style.display = 'none';
             document.getElementById('govHeader').style.display = 'block';
             document.getElementById('mainContent').style.display = 'block';
-            // Carregar dados iniciais
             fetchInventory();
         }
 
-        // Login
         document.getElementById('loginForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
@@ -1007,7 +997,6 @@
             loginButton.disabled = true;
             loginButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Verificando...';
             
-            // Simular delay de verificação
             setTimeout(() => {
                 if (passwordInput.value === ADMIN_PASSWORD) {
                     sessionStorage.setItem(SESSION_KEY, 'true');
@@ -1017,7 +1006,6 @@
                     errorMessage.style.display = 'block';
                     passwordInput.value = '';
                     passwordInput.focus();
-                    // Shake animation
                     errorMessage.style.animation = 'shake 0.5s';
                     setTimeout(() => {
                         errorMessage.style.animation = '';
@@ -1029,12 +1017,9 @@
             }, 800);
         });
 
-        // Verificar ao carregar a página
         checkAuth();
 
-        // ==============================================
         // CÓDIGO PRINCIPAL DO SISTEMA
-        // ==============================================
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzGhyNSo1-w9TDM4BmtkMWTn6bLdwbnkcupdr7i5zZaqD6nrcMnqvPnKncVn8_nSb3A/exec";
         const LOW_STOCK_THRESHOLD = 10;
         const HIGH_STOCK_THRESHOLD = 100;
@@ -1464,7 +1449,6 @@
             }
         });
 
-        // Busca em tempo real
         document.getElementById('searchInventory')?.addEventListener('input', function(e) {
             const searchTerm = e.target.value.toLowerCase();
             document.querySelectorAll('#inventory-display tbody tr').forEach(row => {
@@ -1481,7 +1465,6 @@
             });
         });
 
-        // Carregar dados ao trocar de tab
         document.addEventListener('DOMContentLoaded', () => {
             const tabs = document.querySelectorAll('#myTab button');
             tabs.forEach(tab => {
@@ -1492,8 +1475,6 @@
                     if (targetId === 'analytics-tab') fetchAnalytics();
                 });
             });
-            
-            // O inventário será carregado após o login
         });
     </script>
 </body>
