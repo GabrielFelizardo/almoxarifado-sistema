@@ -1168,6 +1168,9 @@
         const addNewItemModal = new bootstrap.Modal(document.getElementById('addNewItemModal'));
         const addPurchaseModal = new bootstrap.Modal(document.getElementById('addPurchaseModal'));
 
+        // Armazenamento global das compras para exportação
+        window.purchasesData = {};
+
         const showLoading = (show) => loadingDiv.style.display = show ? 'block' : 'none';
         const showError = (message) => { errorDiv.textContent = message; errorDiv.style.display = 'block'; };
         const hideMessages = () => errorDiv.style.display = 'none';
@@ -1407,9 +1410,12 @@
                 `;
             }
 
+            // Limpar o objeto global
+            window.purchasesData = {};
+
             let html = `
                 <div class="table-container">
-                    <table class="table table-hover mb-0" id="purchases-table">
+                    <table class="table table-hover mb-0">
                         <thead>
                             <tr>
                                 <th>Data</th>
@@ -1439,8 +1445,11 @@
                     currency: 'BRL' 
                 });
 
-                // Armazenar dados como JSON no data-attribute
-                const purchaseData = {
+                // Criar ID único para esta compra
+                const purchaseId = `purchase_${index}_${Date.now()}`;
+
+                // Armazenar dados no objeto global
+                window.purchasesData[purchaseId] = {
                     data: purchaseDate,
                     notaFiscal: purchase.notaFiscal,
                     fornecedor: purchase.fornecedor,
@@ -1458,9 +1467,7 @@
                         <td><strong style="color: var(--success);">${valorFormatado}</strong></td>
                         <td>${purchase.responsavel}</td>
                         <td>
-                            <button class="btn btn-primary btn-sm export-purchase-btn" 
-                                    data-purchase='${JSON.stringify(purchaseData).replace(/'/g, "&#39;")}' 
-                                    title="Exportar para TXT">
+                            <button class="btn btn-primary btn-sm" onclick="exportPurchaseById('${purchaseId}')" title="Exportar para TXT">
                                 <i class="fas fa-download"></i>
                             </button>
                         </td>
@@ -1476,6 +1483,16 @@
 
             return html;
         }
+
+        // Função global para exportar compra por ID
+        window.exportPurchaseById = function(purchaseId) {
+            const purchaseData = window.purchasesData[purchaseId];
+            if (purchaseData) {
+                exportPurchaseToTxt(purchaseData);
+            } else {
+                alert('Erro: Dados da compra não encontrados.');
+            }
+        };
 
         function exportPurchaseToTxt(purchaseData) {
             let txtContent = `======================================================================
@@ -1909,15 +1926,6 @@ Data de geração: ${new Date().toLocaleString('pt-BR')}
                 const text = row.textContent.toLowerCase();
                 row.style.display = text.includes(searchTerm) ? '' : 'none';
             });
-        });
-
-        // Event delegation para botões de exportação de compras
-        document.getElementById('purchases-display').addEventListener('click', function(e) {
-            const exportBtn = e.target.closest('.export-purchase-btn');
-            if (exportBtn) {
-                const purchaseData = JSON.parse(exportBtn.getAttribute('data-purchase'));
-                exportPurchaseToTxt(purchaseData);
-            }
         });
 
         document.addEventListener('DOMContentLoaded', () => {
