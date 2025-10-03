@@ -1168,9 +1168,6 @@
         const addNewItemModal = new bootstrap.Modal(document.getElementById('addNewItemModal'));
         const addPurchaseModal = new bootstrap.Modal(document.getElementById('addPurchaseModal'));
 
-        // Armazenamento global das compras para exportação
-        window.purchasesData = {};
-
         const showLoading = (show) => loadingDiv.style.display = show ? 'block' : 'none';
         const showError = (message) => { errorDiv.textContent = message; errorDiv.style.display = 'block'; };
         const hideMessages = () => errorDiv.style.display = 'none';
@@ -1410,9 +1407,6 @@
                 `;
             }
 
-            // Limpar o objeto global
-            window.purchasesData = {};
-
             let html = `
                 <div class="table-container">
                     <table class="table table-hover mb-0">
@@ -1424,13 +1418,12 @@
                                 <th>Itens</th>
                                 <th>Valor Total</th>
                                 <th>Responsável</th>
-                                <th style="width: 100px;">Ações</th>
                             </tr>
                         </thead>
                         <tbody>
             `;
 
-            data.forEach((purchase, index) => {
+            data.forEach((purchase) => {
                 const purchaseDate = new Date(purchase.data).toLocaleDateString('pt-BR');
                 let itens = [];
                 try {
@@ -1445,19 +1438,6 @@
                     currency: 'BRL' 
                 });
 
-                // Criar ID único para esta compra
-                const purchaseId = `purchase_${index}_${Date.now()}`;
-
-                // Armazenar dados no objeto global
-                window.purchasesData[purchaseId] = {
-                    data: purchaseDate,
-                    notaFiscal: purchase.notaFiscal,
-                    fornecedor: purchase.fornecedor,
-                    itens: itens,
-                    valorTotal: valorFormatado,
-                    responsavel: purchase.responsavel
-                };
-
                 html += `
                     <tr>
                         <td>${purchaseDate}</td>
@@ -1466,11 +1446,6 @@
                         <td style="font-size: 0.85rem;">${itensHtml}</td>
                         <td><strong style="color: var(--success);">${valorFormatado}</strong></td>
                         <td>${purchase.responsavel}</td>
-                        <td>
-                            <button class="btn btn-primary btn-sm" onclick="exportPurchaseById('${purchaseId}')" title="Exportar para TXT">
-                                <i class="fas fa-download"></i>
-                            </button>
-                        </td>
                     </tr>
                 `;
             });
@@ -1482,83 +1457,6 @@
             `;
 
             return html;
-        }
-
-        // Função global para exportar compra por ID
-        window.exportPurchaseById = function(purchaseId) {
-            const purchaseData = window.purchasesData[purchaseId];
-            if (purchaseData) {
-                exportPurchaseToTxt(purchaseData);
-            } else {
-                alert('Erro: Dados da compra não encontrados.');
-            }
-        };
-
-        function exportPurchaseToTxt(purchaseData) {
-            let txtContent = `======================================================================
-REGISTRO INTERNO DE COMPRA - ALMOXARIFADO SEDEICS
-======================================================================
-
-Este é um registro interno para controle administrativo.
-NÃO é uma cópia da nota fiscal oficial.
-
-----------------------------------------------------------------------
-INFORMAÇÕES DA COMPRA
-----------------------------------------------------------------------
-Data da Compra: ${purchaseData.data}
-Número da Nota Fiscal: ${purchaseData.notaFiscal}
-Fornecedor/Loja: ${purchaseData.fornecedor}
-Responsável pela Compra: ${purchaseData.responsavel}
-
-----------------------------------------------------------------------
-ITENS ADQUIRIDOS
-----------------------------------------------------------------------
-`;
-
-            purchaseData.itens.forEach((item, index) => {
-                const subtotal = item.preco ? (item.qtd * item.preco).toLocaleString('pt-BR', {
-                    style: 'currency',
-                    currency: 'BRL'
-                }) : 'N/A';
-                
-                txtContent += `
-Item ${index + 1}:
-  Material: ${item.nome}
-  Quantidade: ${item.qtd}`;
-                
-                if (item.preco) {
-                    const precoUnit = item.preco.toLocaleString('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL'
-                    });
-                    txtContent += `
-  Valor Unitário: ${precoUnit}
-  Subtotal: ${subtotal}`;
-                }
-                
-                txtContent += `\n`;
-            });
-
-            txtContent += `
-----------------------------------------------------------------------
-VALOR TOTAL DA COMPRA: ${purchaseData.valorTotal}
-----------------------------------------------------------------------
-
-======================================================================
-Registro gerado automaticamente pelo Sistema de Gestão de Almoxarifado
-Data de geração: ${new Date().toLocaleString('pt-BR')}
-======================================================================
-`;
-
-            const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8' });
-            const link = document.createElement('a');
-            const filename = `Compra_${purchaseData.notaFiscal.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`;
-            
-            link.href = URL.createObjectURL(blob);
-            link.download = filename;
-            link.click();
-            
-            URL.revokeObjectURL(link.href);
         }
 
         function buildAnalyticsHtml(data) {
