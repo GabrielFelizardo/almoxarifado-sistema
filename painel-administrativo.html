@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel Administrativo - Almoxarifado SEDEICS</title>
-    <!-- Favicon - Ícone de Painel Admin (Adaptável: branco no tema escuro, azul no claro) -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cstyle%3E path %7B fill: %231e3a8a; %7D @media (prefers-color-scheme: dark) %7B path %7B fill: %23ffffff; %7D %7D%3C/style%3E%3Cpath d='M64 64c0-17.7-14.3-32-32-32S0 46.3 0 64V400c0 44.2 35.8 80 80 80H480c17.7 0 32-14.3 32-32s-14.3-32-32-32H80c-8.8 0-16-7.2-16-16V64zm406.6 86.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L320 210.7l-57.4-57.4c-12.5-12.5-32.8-12.5-45.3 0l-112 112c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L240 221.3l57.4 57.4c12.5 12.5 32.8 12.5 45.3 0l128-128z'/%3E%3C/svg%3E">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -642,7 +641,6 @@
             opacity: 0.8;
         }
 
-        /* Purchase Item Row */
         .purchase-item-row {
             background: #f8fafc;
             border: 2px solid var(--border);
@@ -815,7 +813,6 @@
     </style>
 </head>
 <body>
-    <!-- Modal de Autenticação -->
     <div class="auth-overlay" id="authOverlay">
         <div class="auth-modal">
             <div class="auth-header">
@@ -852,7 +849,6 @@
         </div>
     </div>
 
-    <!-- Header com Logo -->
     <div class="gov-header" id="govHeader" style="display: none;">
         <div class="container-fluid">
             <img src="https://raw.githubusercontent.com/GabrielFelizardo/almoxarifado-sistema/main/logo.png" 
@@ -870,10 +866,8 @@
         </div>
     </div>
 
-    <!-- Container Principal -->
     <div class="main-container" id="mainContent" style="display: none;">
         <div class="main-card">
-            <!-- Tabs -->
             <ul class="nav nav-tabs" id="myTab" role="tablist">
                 <li class="nav-item" role="presentation">
                     <button class="nav-link active" id="inventory-tab" data-bs-toggle="tab" data-bs-target="#inventory-pane" type="button">
@@ -897,9 +891,7 @@
                 </li>
             </ul>
 
-            <!-- Tab Content -->
             <div class="tab-content" id="myTabContent">
-                <!-- Inventário -->
                 <div class="tab-pane fade show active" id="inventory-pane" role="tabpanel">
                     <div class="toolbar">
                         <div class="search-container">
@@ -918,7 +910,6 @@
                     <div id="inventory-display"></div>
                 </div>
 
-                <!-- Pedidos -->
                 <div class="tab-pane fade" id="orders-pane" role="tabpanel">
                     <div class="toolbar">
                         <div class="search-container">
@@ -932,7 +923,6 @@
                     <div id="orders-display"></div>
                 </div>
 
-                <!-- Compras -->
                 <div class="tab-pane fade" id="purchases-pane" role="tabpanel">
                     <div class="toolbar">
                         <div class="search-container">
@@ -951,7 +941,6 @@
                     <div id="purchases-display"></div>
                 </div>
 
-                <!-- Relatórios -->
                 <div class="tab-pane fade" id="analytics-pane" role="tabpanel">
                     <div class="toolbar" style="justify-content: flex-end;">
                         <button class="btn btn-outline-secondary" onclick="fetchAnalytics()">
@@ -962,7 +951,6 @@
                 </div>
             </div>
 
-            <!-- Loading -->
             <div id="loading" style="display: none;">
                 <div class="text-center">
                     <div class="spinner-border" role="status"></div>
@@ -970,11 +958,9 @@
                 </div>
             </div>
 
-            <!-- Error -->
             <div id="error-display" class="alert alert-danger m-4" style="display: none;"></div>
         </div>
 
-        <!-- Footer -->
         <div class="page-footer">
             <p class="copyright">
                 © 2025 SEDEICS - Secretaria de Desenvolvimento Econômico, Indústria, Comércio e Serviços
@@ -985,7 +971,6 @@
         </div>
     </div>
 
-    <!-- Modals -->
     <div class="modal fade" id="addStockModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -1047,7 +1032,6 @@
         </div>
     </div>
 
-    <!-- Modal de Registro de Compra -->
     <div class="modal fade" id="addPurchaseModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
@@ -1092,7 +1076,6 @@
                         </button>
                     </div>
 
-                    <!-- Calculadora de Total -->
                     <div class="total-calculator">
                         <div class="text-center">
                             <i class="fas fa-calculator" style="font-size: 1.5rem; color: var(--primary);"></i>
@@ -1116,12 +1099,9 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // AUTENTICAÇÃO COM HASH SHA-256
-        // A senha real não está mais visível no código
-        const ADMIN_PASSWORD_HASH = 'f788c6adb4f9fda87b064468ead05318f614753b7b62a6a655e284bd6e364f55'; // Hash SHA-256 da senha
+        const ADMIN_PASSWORD_HASH = 'f788c6adb4f9fda87b064468ead05318f614753b7b62a6a655e284bd6e364f55';
         const SESSION_KEY = 'sedeics_auth';
 
-        // Função para gerar hash SHA-256
         async function sha256(message) {
             const msgBuffer = new TextEncoder().encode(message);
             const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
@@ -1154,7 +1134,6 @@
             loginButton.disabled = true;
             loginButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Verificando...';
             
-            // Gera hash da senha digitada
             const inputHash = await sha256(passwordInput.value);
             
             setTimeout(() => {
@@ -1179,7 +1158,6 @@
 
         checkAuth();
 
-        // CÓDIGO PRINCIPAL DO SISTEMA
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzGhyNSo1-w9TDM4BmtkMWTn6bLdwbnkcupdr7i5zZaqD6nrcMnqvPnKncVn8_nSb3A/exec";
         const LOW_STOCK_THRESHOLD = 10;
         const HIGH_STOCK_THRESHOLD = 100;
@@ -1440,12 +1418,13 @@
                                 <th>Itens</th>
                                 <th>Valor Total</th>
                                 <th>Responsável</th>
+                                <th style="width: 100px;">Ações</th>
                             </tr>
                         </thead>
                         <tbody>
             `;
 
-            data.forEach(purchase => {
+            data.forEach((purchase) => {
                 const purchaseDate = new Date(purchase.data).toLocaleDateString('pt-BR');
                 let itens = [];
                 try {
@@ -1460,6 +1439,15 @@
                     currency: 'BRL' 
                 });
 
+                const purchaseDataJson = JSON.stringify({
+                    data: purchaseDate,
+                    notaFiscal: purchase.notaFiscal,
+                    fornecedor: purchase.fornecedor,
+                    itens: itens,
+                    valorTotal: valorFormatado,
+                    responsavel: purchase.responsavel
+                }).replace(/"/g, '&quot;');
+
                 html += `
                     <tr>
                         <td>${purchaseDate}</td>
@@ -1468,6 +1456,11 @@
                         <td style="font-size: 0.85rem;">${itensHtml}</td>
                         <td><strong style="color: var(--success);">${valorFormatado}</strong></td>
                         <td>${purchase.responsavel}</td>
+                        <td>
+                            <button class="btn btn-primary btn-sm" onclick='exportPurchaseToTxt(${purchaseDataJson})' title="Exportar para TXT">
+                                <i class="fas fa-download"></i>
+                            </button>
+                        </td>
                     </tr>
                 `;
             });
@@ -1479,6 +1472,73 @@
             `;
 
             return html;
+        }
+
+        function exportPurchaseToTxt(purchaseData) {
+            let txtContent = `======================================================================
+REGISTRO INTERNO DE COMPRA - ALMOXARIFADO SEDEICS
+======================================================================
+
+Este é um registro interno para controle administrativo.
+NÃO é uma cópia da nota fiscal oficial.
+
+----------------------------------------------------------------------
+INFORMAÇÕES DA COMPRA
+----------------------------------------------------------------------
+Data da Compra: ${purchaseData.data}
+Número da Nota Fiscal: ${purchaseData.notaFiscal}
+Fornecedor/Loja: ${purchaseData.fornecedor}
+Responsável pela Compra: ${purchaseData.responsavel}
+
+----------------------------------------------------------------------
+ITENS ADQUIRIDOS
+----------------------------------------------------------------------
+`;
+
+            purchaseData.itens.forEach((item, index) => {
+                const subtotal = item.preco ? (item.qtd * item.preco).toLocaleString('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL'
+                }) : 'N/A';
+                
+                txtContent += `
+Item ${index + 1}:
+  Material: ${item.nome}
+  Quantidade: ${item.qtd}`;
+                
+                if (item.preco) {
+                    const precoUnit = item.preco.toLocaleString('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL'
+                    });
+                    txtContent += `
+  Valor Unitário: ${precoUnit}
+  Subtotal: ${subtotal}`;
+                }
+                
+                txtContent += `\n`;
+            });
+
+            txtContent += `
+----------------------------------------------------------------------
+VALOR TOTAL DA COMPRA: ${purchaseData.valorTotal}
+----------------------------------------------------------------------
+
+======================================================================
+Registro gerado automaticamente pelo Sistema de Gestão de Almoxarifado
+Data de geração: ${new Date().toLocaleString('pt-BR')}
+======================================================================
+`;
+
+            const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8' });
+            const link = document.createElement('a');
+            const filename = `Compra_${purchaseData.notaFiscal.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`;
+            
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+            
+            URL.revokeObjectURL(link.href);
         }
 
         function buildAnalyticsHtml(data) {
@@ -1505,7 +1565,6 @@
             };
 
             return `
-                <!-- KPIs -->
                 <div class="kpi-grid">
                     <div class="kpi-card">
                         <div class="kpi-header">
@@ -1562,7 +1621,6 @@
                     </div>
                 </div>
 
-                <!-- Top Items -->
                 <div class="row g-3 mt-2">
                     <div class="col-lg-4">
                         <div class="top-items-section">
@@ -1584,7 +1642,6 @@
                     </div>
                 </div>
 
-                <!-- Stock Alerts -->
                 <div class="row g-3 mt-2">
                     <div class="col-lg-6">
                         <div class="top-items-section">
@@ -1701,7 +1758,6 @@
             }
         });
 
-        // Sistema de Compras
         let purchaseItemCounter = 0;
 
         function addPurchaseItemRow() {
@@ -1729,7 +1785,6 @@
             `;
             container.appendChild(row);
             
-            // Adicionar listeners para calcular total
             row.querySelectorAll('input').forEach(input => {
                 input.addEventListener('input', calculatePurchaseTotal);
             });
@@ -1756,7 +1811,6 @@
 
         document.getElementById('addPurchaseItem').addEventListener('click', addPurchaseItemRow);
 
-        // Abrir modal e adicionar primeiro item
         document.getElementById('addPurchaseModal').addEventListener('shown.bs.modal', () => {
             const container = document.getElementById('purchase-items-container');
             if (container.children.length === 0) {
@@ -1764,7 +1818,6 @@
             }
         });
 
-        // Limpar modal ao fechar
         document.getElementById('addPurchaseModal').addEventListener('hidden.bs.modal', () => {
             document.getElementById('notaFiscal').value = '';
             document.getElementById('fornecedor').value = '';
