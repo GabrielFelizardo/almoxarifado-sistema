@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulário de Pedido de Material - Almoxarifado SEDEICS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            /* Paleta Profissional Institucional */
+            --primary: #1e3a8a;
+            --primary-light: #3b82f6;
+            --secondary: #475569;
+            --accent: #0369a1;
+            --success: #047857;
+            --warning: #d97706;
+            --danger: #b91c1c;
+            --background: #f8fafc;
+            --card-bg: #ffffff;
+            --border: #e2e8f0;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+            --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--background);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* Header Institucional */
+        .gov-header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            padding: 1.5rem 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .gov-logo-img {
+            height: 140px;
+            width: auto;
+            display: inline-block;
+        }
+
+        /* Container Principal */
+        .main-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0 1rem 2rem;
+        }
+
+        /* Card Principal */
+        .main-card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .card-header {
+            background: var(--primary);
+            color: white;
+            padding: 1.5rem 2rem;
+            border-bottom: 3px solid var(--accent);
+        }
+
+        .card-header h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .card-header p {
+            margin: 0.5rem 0 0 0;
+            opacity: 0.9;
+            font-size: 0.95rem;
+        }
+
+        .card-body {
+            padding: 2rem;
+        }
+
+        /* Section Headers */
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .section-header i {
+            color: var(--primary);
+            font-size: 1.25rem;
+        }
+
+        .section-header h5 {
+            margin: 0;
+            font-weight: 700;
+            color: var(--text-primary);
+            font-size: 1.1rem;
+        }
+
+        /* Form Controls */
+        .form-label {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .form-label i {
+            color: var(--accent);
+            font-size: 0.9rem;
+        }
+
+        .form-control, .form-select {
+            border: 2px solid var(--border);
+            border-radius: 6px;
+            padding: 0.65rem 0.875rem;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+            background: white;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+            outline: none;
+        }
+
+        .form-control::placeholder {
+            color: #94a3b8;
+        }
+
+        /* Priority Select Styles */
+        .priority-select {
+            font-weight: 600;
+        }
+
+        .priority-select option[value="Urgente"] {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .priority-select option[value="Alta"] {
+            background: #fed7aa;
+            color: #d97706;
+        }
+
+        .priority-select option[value="Normal"] {
+            background: #d1fae5;
+            color: #047857;
+        }
+
+        /* Item Row */
+        .item-row {
+            background: #f8fafc;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .item-row:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow);
+        }
+
+        .item-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .item-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            background: var(--primary);
+            color: white;
+            border-radius: 6px;
+            font-weight: 700;
+            margin-right: 0.75rem;
+            font-size: 0.9rem;
+        }
+
+        .item-label {
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        /* Buttons */
+        .btn {
+            border-radius: 6px;
+            padding: 0.65rem 1.25rem;
+            font-weight: 600;
+            border: none;
+            transition: all 0.2s ease;
+            font-size: 0.95rem;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(30, 58, 138, 0.2);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(4, 120, 87, 0.2);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(185, 28, 28, 0.2);
+        }
+
+        .btn-lg {
+            padding: 0.875rem 2rem;
+            font-size: 1.05rem;
+            font-weight: 700;
+        }
+
+        .btn i {
+            margin-right: 0.5rem;
+        }
+
+        /* Info Badge */
+        .info-badge {
+            display: inline-block;
+            background: #dbeafe;
+            color: var(--accent);
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+
+        .required-badge {
+            display: inline-block;
+            background: #fee2e2;
+            color: var(--danger);
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+
+        /* Alert */
+        .alert {
+            border-radius: 6px;
+            border: none;
+            padding: 1rem 1.25rem;
+            box-shadow: var(--shadow);
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: var(--success);
+            border-left: 4px solid var(--success);
+        }
+
+        .alert-danger {
+            background: #fee2e2;
+            color: var(--danger);
+            border-left: 4px solid var(--danger);
+        }
+
+        /* Loading */
+        .loading-skeleton {
+            background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            border-radius: 6px;
+            height: 48px;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Divider */
+        hr {
+            border: none;
+            height: 1px;
+            background: var(--border);
+            margin: 2rem 0;
+        }
+
+        /* Outro Input */
+        .outro-input {
+            display: none;
+            margin-top: 0.75rem;
+        }
+
+        /* Footer */
+        .page-footer {
+            text-align: center;
+            padding: 2rem 1rem 1rem;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .page-footer .copyright {
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .page-footer .developer {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            opacity: 0.8;
+        }
+
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .gov-logo-img {
+                height: 60px;
+                padding: 8px;
+            }
+
+            .card-body {
+                padding: 1.5rem 1rem;
+            }
+
+            .item-row {
+                padding: 1rem;
+            }
+        }
+
+        /* Animações sutis */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .main-card {
+            animation: fadeIn 0.5s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header com Logo -->
+    <div class="gov-header">
+        <img src="https://raw.githubusercontent.com/GabrielFelizardo/almoxarifado-sistema/main/logo.png" 
+             alt="Logo SEDEICS" 
+             class="gov-logo-img">
+    </div>
+
+    <!-- Container Principal -->
+    <div class="main-container">
+        <div class="main-card">
+            <div class="card-header">
+                <h2>
+                    <i class="fas fa-shopping-cart"></i>
+                    Formulário de Pedido de Material
+                </h2>
+                <p>Preencha os campos abaixo para solicitar materiais do almoxarifado</p>
+            </div>
+
+            <div class="card-body">
+                <form id="pedidoForm">
+                    <fieldset id="form-fieldset" disabled>
+                        <!-- Seção 1: Informações do Solicitante -->
+                        <div class="section-header">
+                            <i class="fas fa-user"></i>
+                            <h5>Informações do Solicitante</h5>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="solicitante" class="form-label">
+                                    <i class="fas fa-user-circle"></i>
+                                    Nome Completo
+                                </label>
+                                <input type="text" class="form-control" id="solicitante" placeholder="Digite seu nome completo" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="idFuncional" class="form-label">
+                                    <i class="fas fa-id-badge"></i>
+                                    ID Funcional
+                                </label>
+                                <input type="text" class="form-control" id="idFuncional" placeholder="Ex: 12345">
+                            </div>
+                            <div class="col-12 mb-3">
+                                <label for="setor" class="form-label">
+                                    <i class="fas fa-building"></i>
+                                    Setor
+                                </label>
+                                <select class="form-select" id="setor" required>
+                                    <option value="" selected disabled>Selecione seu setor...</option>
+                                    <option>GABSEC</option>
+                                    <option>CHEGAB</option>
+                                    <option>DGAF</option>
+                                    <option>SUPGP</option>
+                                    <option>SUBICS</option>
+                                    <option>SUBAPE</option>
+                                    <option>SUBACOM</option>
+                                    <option>ASSJUR</option>
+                                    <option>SUBEXE</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <!-- Seção 2: Nível de Necessidade -->
+                        <div class="section-header">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <h5>Nível de Necessidade</h5>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="nivelNecessidade" class="form-label">
+                                <i class="fas fa-flag"></i>
+                                Qual a urgência desta solicitação?
+                                <span class="required-badge">Obrigatório</span>
+                            </label>
+                            <select class="form-select priority-select" id="nivelNecessidade" required>
+                                <option value="" selected disabled>Selecione o nível de necessidade...</option>
+                                <option value="Urgente">🔴 Urgente - Necessário imediatamente</option>
+                                <option value="Alta">🟡 Alta - Necessário em breve</option>
+                                <option value="Normal">🟢 Normal - Sem urgência</option>
+                            </select>
+                        </div>
+
+                        <hr>
+
+                        <!-- Seção 3: Itens do Pedido -->
+                        <div class="section-header">
+                            <i class="fas fa-list"></i>
+                            <h5>Itens do Pedido</h5>
+                        </div>
+
+                        <div id="loading-materiais" class="text-center py-3">
+                            <div class="loading-skeleton"></div>
+                            <div class="loading-skeleton" style="width: 70%; margin: 0 auto;"></div>
+                        </div>
+
+                        <div id="itens-container"></div>
+
+                        <button type="button" class="btn btn-primary" id="adicionarItem">
+                            <i class="fas fa-plus"></i>
+                            Adicionar Outro Item
+                        </button>
+
+                        <hr>
+
+                        <!-- Seção 4: Justificativa -->
+                        <div class="section-header">
+                            <i class="fas fa-comment-alt"></i>
+                            <h5>Justificativa / Observações</h5>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="justificativa" class="form-label">
+                                <i class="fas fa-edit"></i>
+                                Descreva o motivo da solicitação
+                                <span class="info-badge">Opcional</span>
+                            </label>
+                            <textarea class="form-control" id="justificativa" rows="4" placeholder="Explique brevemente o motivo desta solicitação..."></textarea>
+                        </div>
+
+                        <!-- Botão de Envio -->
+                        <div class="d-grid mt-4">
+                            <button type="submit" class="btn btn-success btn-lg" id="btn-enviar">
+                                <i class="fas fa-paper-plane"></i>
+                                Enviar Pedido
+                            </button>
+                        </div>
+                    </fieldset>
+                </form>
+
+                <!-- Alertas -->
+                <div id="alerta" class="mt-4" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="page-footer">
+            <p class="copyright">
+                © 2025 SEDEICS - Secretaria de Desenvolvimento Econômico, Indústria, Comércio e Serviços
+            </p>
+            <p class="developer">
+                Desenvolvido por Gabriel Felizardo da Silva
+            </p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzGhyNSo1-w9TDM4BmtkMWTn6bLdwbnkcupdr7i5zZaqD6nrcMnqvPnKncVn8_nSb3A/exec";
+
+        const form = document.getElementById('pedidoForm');
+        const formFieldset = document.getElementById('form-fieldset');
+        const loadingMateriaisDiv = document.getElementById('loading-materiais');
+        const btnAdicionarItem = document.getElementById('adicionarItem');
+        const itensContainer = document.getElementById('itens-container');
+        const btnEnviar = document.getElementById('btn-enviar');
+        const alerta = document.getElementById('alerta');
+
+        let materialOptionsHtml = '';
+        let itemCounter = 0;
+
+        function criarOpcoesDeMaterial(data) {
+            let html = '<option value="" selected disabled>Selecione um material...</option>';
+            const sortedCategories = Object.keys(data).sort();
+
+            sortedCategories.forEach(category => {
+                html += `<optgroup label="${category}">`;
+                const sortedItems = data[category].sort((a, b) => a.nome.localeCompare(b.nome));
+                sortedItems.forEach(item => {
+                    html += `<option value="${item.nome}">${item.nome}</option>`;
+                });
+                html += `</optgroup>`;
+            });
+
+            html += '<option value="Outros">Outros (especificar)</option>';
+            return html;
+        }
+
+        function adicionarItem() {
+            if (!materialOptionsHtml) {
+                alert("Aguarde o carregamento dos materiais.");
+                return;
+            }
+
+            itemCounter++;
+            const itemDiv = document.createElement('div');
+            itemDiv.classList.add('item-row');
+            itemDiv.innerHTML = `
+                <div class="item-header">
+                    <span class="item-number">${itemCounter}</span>
+                    <span class="item-label">Item ${itemCounter}</span>
+                </div>
+                <div class="row g-2">
+                    <div class="col-md-8">
+                        <select class="form-select item-select" required>
+                            ${materialOptionsHtml}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="number" class="form-control" placeholder="Quantidade" min="1" required>
+                    </div>
+                    <div class="col-md-1 d-flex align-items-center">
+                        <button class="btn btn-danger w-100" type="button" onclick="removerItem(this)">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                <input type="text" class="form-control outro-input" placeholder="Especifique o material solicitado">
+            `;
+
+            itensContainer.appendChild(itemDiv);
+
+            itemDiv.querySelector('.item-select').addEventListener('change', function() {
+                const outroInput = this.closest('.item-row').querySelector('.outro-input');
+                outroInput.style.display = this.value === 'Outros' ? 'block' : 'none';
+                outroInput.required = this.value === 'Outros';
+            });
+        }
+
+        function removerItem(btn) {
+            btn.closest('.item-row').remove();
+            atualizarNumerosItens();
+        }
+
+        function atualizarNumerosItens() {
+            const items = itensContainer.querySelectorAll('.item-row');
+            items.forEach((item, index) => {
+                const num = index + 1;
+                item.querySelector('.item-number').textContent = num;
+                item.querySelector('.item-label').textContent = `Item ${num}`;
+            });
+            itemCounter = items.length;
+        }
+
+        // Carregar materiais
+        document.addEventListener('DOMContentLoaded', () => {
+            fetch(`${SCRIPT_URL}?page=inventory`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.error) throw new Error(data.error);
+                    materialOptionsHtml = criarOpcoesDeMaterial(data);
+                    adicionarItem();
+                    loadingMateriaisDiv.style.display = 'none';
+                    formFieldset.disabled = false;
+                })
+                .catch(error => {
+                    loadingMateriaisDiv.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            Erro ao carregar materiais: ${error.message}
+                        </div>
+                    `;
+                });
+        });
+
+        btnAdicionarItem.addEventListener('click', adicionarItem);
+
+        // Enviar formulário
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            btnEnviar.disabled = true;
+            btnEnviar.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Enviando...';
+
+            const data = {
+                action: 'submitOrder',
+                solicitante: document.getElementById('solicitante').value,
+                idFuncional: document.getElementById('idFuncional').value,
+                setor: document.getElementById('setor').value,
+                nivelNecessidade: document.getElementById('nivelNecessidade').value,
+                justificativa: document.getElementById('justificativa').value,
+                itens: []
+            };
+
+            itensContainer.querySelectorAll('.item-row').forEach(row => {
+                let nome = row.querySelector('.item-select').value;
+                if (nome === 'Outros') {
+                    nome = row.querySelector('.outro-input').value.trim();
+                }
+                const qtd = row.querySelector('input[type="number"]').value;
+                if (nome && qtd > 0) {
+                    data.itens.push({ nome, qtd });
+                }
+            });
+
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                mode: 'cors',
+                body: JSON.stringify(data)
+            })
+            .then(res => res.json())
+            .then(response => {
+                alerta.style.display = 'block';
+                if (response.result === 'success') {
+                    alerta.className = 'alert alert-success';
+                    alerta.innerHTML = `
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-check-circle fa-2x me-3"></i>
+                            <div>
+                                <strong>Pedido registrado com sucesso!</strong>
+                                <p class="mb-0 mt-1">Seu pedido foi registrado no sistema e será processado pelo almoxarifado.</p>
+                            </div>
+                        </div>
+                    `;
+                    form.reset();
+                    itensContainer.innerHTML = '';
+                    itemCounter = 0;
+                    adicionarItem();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                } else {
+                    throw new Error(response.message);
+                }
+            })
+            .catch(error => {
+                alerta.style.display = 'block';
+                alerta.className = 'alert alert-danger';
+                alerta.innerHTML = `
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
+                        <div>
+                            <strong>Erro ao enviar pedido</strong>
+                            <p class="mb-0 mt-1">${error.message}</p>
+                        </div>
+                    </div>
+                `;
+            })
+            .finally(() => {
+                btnEnviar.disabled = false;
+                btnEnviar.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar Pedido';
+            });
+        });
+    </script>
+</body>
+</html>
