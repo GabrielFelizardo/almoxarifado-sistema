@@ -1167,6 +1167,9 @@
         const addStockModal = new bootstrap.Modal(document.getElementById('addStockModal'));
         const addNewItemModal = new bootstrap.Modal(document.getElementById('addNewItemModal'));
         const addPurchaseModal = new bootstrap.Modal(document.getElementById('addPurchaseModal'));
+        
+        // Armazenar dados de compras para exportação
+        let purchasesDataStore = [];
 
         const showLoading = (show) => loadingDiv.style.display = show ? 'block' : 'none';
         const showError = (message) => { errorDiv.textContent = message; errorDiv.style.display = 'block'; };
@@ -1398,6 +1401,7 @@
 
         function buildPurchasesHtml(data) {
             if (!Array.isArray(data) || data.length === 0) {
+                purchasesDataStore = []; // Limpar o store
                 return `
                     <div class="empty-state">
                         <i class="fas fa-shopping-cart"></i>
@@ -1406,6 +1410,9 @@
                     </div>
                 `;
             }
+
+            // Limpar e repovoar o store de dados
+            purchasesDataStore = [];
 
             let html = `
                 <div class="table-container">
@@ -1424,7 +1431,7 @@
                         <tbody>
             `;
 
-            data.forEach((purchase) => {
+            data.forEach((purchase, index) => {
                 const purchaseDate = new Date(purchase.data).toLocaleDateString('pt-BR');
                 let itens = [];
                 try {
@@ -1439,14 +1446,15 @@
                     currency: 'BRL' 
                 });
 
-                const purchaseDataJson = JSON.stringify({
+                // Armazenar dados no store global
+                purchasesDataStore[index] = {
                     data: purchaseDate,
                     notaFiscal: purchase.notaFiscal,
                     fornecedor: purchase.fornecedor,
                     itens: itens,
                     valorTotal: valorFormatado,
                     responsavel: purchase.responsavel
-                }).replace(/"/g, '&quot;');
+                };
 
                 html += `
                     <tr>
@@ -1457,7 +1465,7 @@
                         <td><strong style="color: var(--success);">${valorFormatado}</strong></td>
                         <td>${purchase.responsavel}</td>
                         <td>
-                            <button class="btn btn-primary btn-sm" onclick='exportPurchaseToTxt(${purchaseDataJson})' title="Exportar para TXT">
+                            <button class="btn btn-primary btn-sm" onclick="exportPurchaseToTxt(${index})" title="Exportar para TXT">
                                 <i class="fas fa-download"></i>
                             </button>
                         </td>
@@ -1474,7 +1482,15 @@
             return html;
         }
 
-        function exportPurchaseToTxt(purchaseData) {
+        function exportPurchaseToTxt(index) {
+            // Buscar dados do store global
+            const purchaseData = purchasesDataStore[index];
+            
+            if (!purchaseData) {
+                alert('Erro ao carregar dados da compra.');
+                return;
+            }
+            
             let txtContent = `======================================================================
 REGISTRO INTERNO DE COMPRA - ALMOXARIFADO SEDEICS
 ======================================================================
@@ -1495,14 +1511,14 @@ ITENS ADQUIRIDOS
 ----------------------------------------------------------------------
 `;
 
-            purchaseData.itens.forEach((item, index) => {
+            purchaseData.itens.forEach((item, idx) => {
                 const subtotal = item.preco ? (item.qtd * item.preco).toLocaleString('pt-BR', {
                     style: 'currency',
                     currency: 'BRL'
                 }) : 'N/A';
                 
                 txtContent += `
-Item ${index + 1}:
+Item ${idx + 1}:
   Material: ${item.nome}
   Quantidade: ${item.qtd}`;
                 
