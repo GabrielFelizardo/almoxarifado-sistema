@@ -1167,9 +1167,6 @@
         const addStockModal = new bootstrap.Modal(document.getElementById('addStockModal'));
         const addNewItemModal = new bootstrap.Modal(document.getElementById('addNewItemModal'));
         const addPurchaseModal = new bootstrap.Modal(document.getElementById('addPurchaseModal'));
-        
-        // Armazenar dados de compras para exportação
-        let purchasesDataStore = [];
 
         const showLoading = (show) => loadingDiv.style.display = show ? 'block' : 'none';
         const showError = (message) => { errorDiv.textContent = message; errorDiv.style.display = 'block'; };
@@ -1401,7 +1398,6 @@
 
         function buildPurchasesHtml(data) {
             if (!Array.isArray(data) || data.length === 0) {
-                purchasesDataStore = []; // Limpar o store
                 return `
                     <div class="empty-state">
                         <i class="fas fa-shopping-cart"></i>
@@ -1411,12 +1407,9 @@
                 `;
             }
 
-            // Limpar e repovoar o store de dados
-            purchasesDataStore = [];
-
             let html = `
                 <div class="table-container">
-                    <table class="table table-hover mb-0">
+                    <table class="table table-hover mb-0" id="purchases-table">
                         <thead>
                             <tr>
                                 <th>Data</th>
@@ -1446,8 +1439,8 @@
                     currency: 'BRL' 
                 });
 
-                // Armazenar dados no store global
-                purchasesDataStore[index] = {
+                // Armazenar dados como JSON no data-attribute
+                const purchaseData = {
                     data: purchaseDate,
                     notaFiscal: purchase.notaFiscal,
                     fornecedor: purchase.fornecedor,
@@ -1465,7 +1458,9 @@
                         <td><strong style="color: var(--success);">${valorFormatado}</strong></td>
                         <td>${purchase.responsavel}</td>
                         <td>
-                            <button class="btn btn-primary btn-sm" onclick="exportPurchaseToTxt(${index})" title="Exportar para TXT">
+                            <button class="btn btn-primary btn-sm export-purchase-btn" 
+                                    data-purchase='${JSON.stringify(purchaseData).replace(/'/g, "&#39;")}' 
+                                    title="Exportar para TXT">
                                 <i class="fas fa-download"></i>
                             </button>
                         </td>
@@ -1482,15 +1477,7 @@
             return html;
         }
 
-        function exportPurchaseToTxt(index) {
-            // Buscar dados do store global
-            const purchaseData = purchasesDataStore[index];
-            
-            if (!purchaseData) {
-                alert('Erro ao carregar dados da compra.');
-                return;
-            }
-            
+        function exportPurchaseToTxt(purchaseData) {
             let txtContent = `======================================================================
 REGISTRO INTERNO DE COMPRA - ALMOXARIFADO SEDEICS
 ======================================================================
@@ -1511,14 +1498,14 @@ ITENS ADQUIRIDOS
 ----------------------------------------------------------------------
 `;
 
-            purchaseData.itens.forEach((item, idx) => {
+            purchaseData.itens.forEach((item, index) => {
                 const subtotal = item.preco ? (item.qtd * item.preco).toLocaleString('pt-BR', {
                     style: 'currency',
                     currency: 'BRL'
                 }) : 'N/A';
                 
                 txtContent += `
-Item ${idx + 1}:
+Item ${index + 1}:
   Material: ${item.nome}
   Quantidade: ${item.qtd}`;
                 
@@ -1922,6 +1909,15 @@ Data de geração: ${new Date().toLocaleString('pt-BR')}
                 const text = row.textContent.toLowerCase();
                 row.style.display = text.includes(searchTerm) ? '' : 'none';
             });
+        });
+
+        // Event delegation para botões de exportação de compras
+        document.getElementById('purchases-display').addEventListener('click', function(e) {
+            const exportBtn = e.target.closest('.export-purchase-btn');
+            if (exportBtn) {
+                const purchaseData = JSON.parse(exportBtn.getAttribute('data-purchase'));
+                exportPurchaseToTxt(purchaseData);
+            }
         });
 
         document.addEventListener('DOMContentLoaded', () => {
