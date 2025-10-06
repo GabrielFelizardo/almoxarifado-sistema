@@ -1189,6 +1189,22 @@
 
         checkAuth();
 
+        function formatCurrency(value) {
+            return parseFloat(value).toLocaleString('pt-BR', { 
+                style: 'currency', 
+                currency: 'BRL',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        function formatNumber(value) {
+            return parseFloat(value).toLocaleString('pt-BR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
         async function apiCall(page = null, payload = null) {
             hideMessages();
             showLoading(true);
@@ -1458,10 +1474,7 @@
                 }
 
                 const itensHtml = itens.map(item => `${item.nome} (${item.qtd})`).join('<br>');
-                const valorFormatado = parseFloat(purchase.valorTotal).toLocaleString('pt-BR', { 
-                    style: 'currency', 
-                    currency: 'BRL' 
-                });
+                const valorFormatado = formatCurrency(purchase.valorTotal);
 
                 html += `
                     <tr>
@@ -1527,15 +1540,15 @@ ITENS COMPRADOS
                 const subtotal = item.qtd * item.preco;
                 txtContent += `${i + 1}. ${item.nome}
    Quantidade: ${item.qtd}
-   Valor Unitário: R$ ${item.preco.toFixed(2)}
-   Subtotal: R$ ${subtotal.toFixed(2)}
+   Valor Unitário: R$ ${formatNumber(item.preco)}
+   Subtotal: R$ ${formatNumber(subtotal)}
 
 `;
             });
 
             const valorTotal = parseFloat(purchase.valorTotal);
             txtContent += `----------------------------------------
-VALOR TOTAL: R$ ${valorTotal.toFixed(2)}
+VALOR TOTAL: R$ ${formatNumber(valorTotal)}
 ========================================
 
 Documento gerado automaticamente pelo
@@ -1628,8 +1641,8 @@ Sistema de Gestão de Almoxarifado - SEDEICS
                 
                 doc.text(`${i + 1}. ${item.nome}`, 20, yPos);
                 doc.text(item.qtd.toString(), 130, yPos);
-                doc.text(`R$ ${item.preco.toFixed(2)}`, 150, yPos);
-                doc.text(`R$ ${subtotal.toFixed(2)}`, 175, yPos);
+                doc.text(`R$ ${formatNumber(item.preco)}`, 150, yPos);
+                doc.text(`R$ ${formatNumber(subtotal)}`, 175, yPos);
                 yPos += 6;
             });
 
@@ -1641,7 +1654,7 @@ Sistema de Gestão de Almoxarifado - SEDEICS
             const valorTotal = parseFloat(purchase.valorTotal);
             doc.setFont(undefined, 'bold');
             doc.setFontSize(12);
-            doc.text(`VALOR TOTAL: R$ ${valorTotal.toFixed(2)}`, 20, yPos);
+            doc.text(`VALOR TOTAL: R$ ${formatNumber(valorTotal)}`, 20, yPos);
 
             yPos += 15;
             doc.setFontSize(8);
@@ -1925,10 +1938,7 @@ Sistema de Gestão de Almoxarifado - SEDEICS
                 total += qty * price;
             });
             
-            document.getElementById('purchaseTotal').textContent = total.toLocaleString('pt-BR', {
-                style: 'currency',
-                currency: 'BRL'
-            });
+            document.getElementById('purchaseTotal').textContent = formatCurrency(total);
         }
 
         document.getElementById('addPurchaseItem').addEventListener('click', addPurchaseItemRow);
