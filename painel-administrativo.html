@@ -837,6 +837,99 @@
             color: var(--primary);
         }
 
+        .mini-pagination {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            padding: 0.5rem;
+        }
+
+        .btn-mini-page {
+            width: 32px;
+            height: 32px;
+            border: 2px solid var(--border);
+            background: white;
+            color: var(--text-primary);
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+        }
+
+        .btn-mini-page:hover:not(:disabled) {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: #f8fafc;
+            transform: scale(1.05);
+        }
+
+        .btn-mini-page:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .mini-page-info {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .month-navigation {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .btn-month-nav {
+            width: 36px;
+            height: 36px;
+            border: 2px solid var(--border);
+            background: white;
+            color: var(--text-primary);
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-month-nav:hover:not(:disabled) {
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: scale(1.05);
+        }
+
+        .btn-month-nav:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .month-nav-info {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            min-width: 100px;
+            text-align: center;
+        }
+
+        .report-export-buttons {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
         @media (max-width: 768px) {
             .main-container {
                 padding: 1rem;
@@ -1279,18 +1372,19 @@
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzGhyNSo1-w9TDM4BmtkMWTn6bLdwbnkcupdr7i5zZaqD6nrcMnqvPnKncVn8_nSb3A/exec";
         const LOW_STOCK_THRESHOLD = 10;
         const HIGH_STOCK_THRESHOLD = 100;
+        const SYSTEM_START_MONTH = 8;
+        const SYSTEM_START_YEAR = 2025;
         
-        // Paginação
         const ITEMS_PER_PAGE = 20;
         const STOCK_ITEMS_PER_PAGE = 10;
+        const MONTHS_PER_PAGE_DISPLAY = 12;
         let currentOrdersPage = 1;
         let allOrdersData = [];
         let allInventoryData = {};
         let currentInventoryCategory = null;
         let currentLowStockPage = 1;
         let currentHighStockPage = 1;
-        let currentMonthPage = 1;
-        const MONTHS_PER_PAGE = 12;
+        let currentMonthsPage = 1;
         let currentMonthReport = null;
 
         const loadingDiv = document.getElementById('loading');
@@ -1481,7 +1575,6 @@
                                 <tbody class="category-items" data-category="${category}">
                 `;
 
-                // Mostrar apenas primeiros 20 itens inicialmente
                 const displayItems = items.slice(0, ITEMS_PER_PAGE);
                 displayItems.forEach(item => {
                     let stockClass = 'stock-high';
@@ -1512,7 +1605,6 @@
                             </table>
                 `;
 
-                // Adicionar paginação se tiver mais de 20 itens
                 if (items.length > ITEMS_PER_PAGE) {
                     const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
                     html += `
@@ -1575,12 +1667,10 @@
                 `;
             });
 
-            // Atualizar botões de paginação
             document.querySelectorAll(`.btn-page[data-category="${category}"]`).forEach(btn => {
                 btn.classList.toggle('active', parseInt(btn.dataset.page) === page);
             });
 
-            // Atualizar info de paginação
             const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
             const paginationInfo = tbody.closest('.table-container').querySelector('.pagination-info');
             const showing = Math.min(end, items.length);
@@ -1675,7 +1765,6 @@
                     </table>
             `;
 
-            // Adicionar paginação se necessário
             if (totalPages > 1) {
                 html += `
                     <div class="pagination-container">
@@ -1756,7 +1845,6 @@
             `;
 
             data.forEach((purchase, index) => {
-                // Data da compra (NF) ou data de registro
                 let dataExibicao = purchase.data;
                 if (purchase.dataCompra) {
                     dataExibicao = purchase.dataCompra;
@@ -1807,7 +1895,6 @@
         function exportPurchaseTXT(index) {
             const purchase = window.purchasesData[index];
             
-            // Usar data da compra se disponível, senão usar data de registro
             let dataExibicao = purchase.dataCompra || purchase.data;
             const purchaseDate = new Date(dataExibicao).toLocaleString('pt-BR');
             
@@ -1868,7 +1955,6 @@ Sistema de Gestão de Almoxarifado - SEDEICS
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
 
-            // Usar data da compra se disponível, senão usar data de registro
             let dataExibicao = purchase.dataCompra || purchase.data;
             const purchaseDate = new Date(dataExibicao).toLocaleDateString('pt-BR');
             
@@ -2043,7 +2129,6 @@ Sistema de Gestão de Almoxarifado - SEDEICS
                 return html;
             };
 
-            // Salvar dados para paginação
             window.analyticsData = data;
 
             return `
@@ -2255,13 +2340,44 @@ Sistema de Gestão de Almoxarifado - SEDEICS
                 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
                 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
             ];
-            const currentMonth = new Date().getMonth();
-            const currentYear = new Date().getFullYear();
+            
+            const now = new Date();
+            const currentMonth = now.getMonth();
+            const currentYear = now.getFullYear();
+            
+            const startDate = new Date(SYSTEM_START_YEAR, SYSTEM_START_MONTH, 1);
+            const monthsSinceStart = (currentYear - SYSTEM_START_YEAR) * 12 + (currentMonth - SYSTEM_START_MONTH) + 1;
+            
+            const totalPages = Math.ceil(monthsSinceStart / MONTHS_PER_PAGE_DISPLAY);
+            const start = (currentMonthsPage - 1) * MONTHS_PER_PAGE_DISPLAY;
+            const end = Math.min(start + MONTHS_PER_PAGE_DISPLAY, monthsSinceStart);
             
             let html = '';
-            for (let i = 0; i < 12; i++) {
-                const monthIndex = (currentMonth - 11 + i + 12) % 12;
-                const year = currentMonth - 11 + i < 0 ? currentYear - 1 : currentYear;
+            
+            if (totalPages > 1) {
+                html += `
+                    <div class="month-navigation">
+                        <button class="btn-month-nav" onclick="changeMonthsPage(${currentMonthsPage - 1})" 
+                                ${currentMonthsPage === 1 ? 'disabled' : ''}>
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <span class="month-nav-info">Página ${currentMonthsPage} de ${totalPages}</span>
+                        <button class="btn-month-nav" onclick="changeMonthsPage(${currentMonthsPage + 1})" 
+                                ${currentMonthsPage === totalPages ? 'disabled' : ''}>
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                `;
+            }
+            
+            html += '<div class="month-buttons">';
+            
+            for (let i = start; i < end; i++) {
+                const monthsFromStart = monthsSinceStart - 1 - i;
+                const targetDate = new Date(currentYear, currentMonth - monthsFromStart, 1);
+                const monthIndex = targetDate.getMonth();
+                const year = targetDate.getFullYear();
+                
                 html += `
                     <button class="btn-month" onclick="loadMonthlyReport(${monthIndex}, ${year})">
                         ${months[monthIndex]}<br>
@@ -2269,7 +2385,25 @@ Sistema de Gestão de Almoxarifado - SEDEICS
                     </button>
                 `;
             }
+            
+            html += '</div>';
             return html;
+        }
+
+        function changeMonthsPage(page) {
+            const now = new Date();
+            const currentMonth = now.getMonth();
+            const currentYear = now.getFullYear();
+            
+            const startDate = new Date(SYSTEM_START_YEAR, SYSTEM_START_MONTH, 1);
+            const monthsSinceStart = (currentYear - SYSTEM_START_YEAR) * 12 + (currentMonth - SYSTEM_START_MONTH) + 1;
+            
+            const totalPages = Math.ceil(monthsSinceStart / MONTHS_PER_PAGE_DISPLAY);
+            
+            if (page < 1 || page > totalPages) return;
+            
+            currentMonthsPage = page;
+            document.getElementById('monthNavigationContainer').innerHTML = generateMonthButtons();
         }
 
         async function loadMonthlyReport(month, year) {
@@ -2278,7 +2412,6 @@ Sistema de Gestão de Almoxarifado - SEDEICS
                 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
             ];
 
-            // Atualizar botões ativos
             document.querySelectorAll('.btn-month').forEach(btn => btn.classList.remove('active'));
             event.target.closest('.btn-month').classList.add('active');
 
@@ -2286,11 +2419,9 @@ Sistema de Gestão de Almoxarifado - SEDEICS
             container.innerHTML = '<div class="text-center py-4"><div class="spinner-border" role="status"></div></div>';
 
             try {
-                // Buscar pedidos e compras
                 const orders = await apiCall('orders');
                 const purchases = await apiCall('purchases');
 
-                // Filtrar por mês
                 const startDate = new Date(year, month, 1);
                 const endDate = new Date(year, month + 1, 0, 23, 59, 59);
 
@@ -2304,13 +2435,11 @@ Sistema de Gestão de Almoxarifado - SEDEICS
                     return purchaseDate >= startDate && purchaseDate <= endDate;
                 });
 
-                // Calcular estatísticas
                 const totalOrders = monthOrders.length;
                 const completedOrders = monthOrders.filter(o => o.status === 'Concluído').length;
                 const totalPurchases = monthPurchases.length;
                 const totalSpent = monthPurchases.reduce((sum, p) => sum + parseFloat(p.valorTotal || 0), 0);
 
-                // Itens mais pedidos do mês
                 const itemCounts = {};
                 monthOrders.forEach(order => {
                     itemCounts[order.item] = (itemCounts[order.item] || 0) + parseInt(order.qtd);
@@ -2318,6 +2447,8 @@ Sistema de Gestão de Almoxarifado - SEDEICS
                 const topItems = Object.entries(itemCounts)
                     .sort((a, b) => b[1] - a[1])
                     .slice(0, 5);
+
+                currentMonthReport = { month, year, orders: monthOrders, purchases: monthPurchases };
 
                 container.innerHTML = `
                     <div class="report-card">
@@ -2343,6 +2474,15 @@ Sistema de Gestão de Almoxarifado - SEDEICS
                                 <div class="summary-label">Valor Gasto</div>
                                 <div class="summary-value" style="font-size: 1.2rem;">${formatCurrency(totalSpent)}</div>
                             </div>
+                        </div>
+
+                        <div class="report-export-buttons">
+                            <button class="btn btn-info btn-sm" onclick="exportMonthlyReportTXT()">
+                                <i class="fas fa-file-alt"></i> Exportar TXT
+                            </button>
+                            <button class="btn btn-primary btn-sm" onclick="exportMonthlyReportPDF()">
+                                <i class="fas fa-file-pdf"></i> Exportar PDF
+                            </button>
                         </div>
 
                         ${topItems.length > 0 ? `
@@ -2397,6 +2537,205 @@ Sistema de Gestão de Almoxarifado - SEDEICS
                     </div>
                 `;
             }
+        }
+
+        function exportMonthlyReportTXT() {
+            if (!currentMonthReport) return;
+
+            const months = [
+                'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+            ];
+
+            const { month, year, orders, purchases } = currentMonthReport;
+            
+            const totalOrders = orders.length;
+            const completedOrders = orders.filter(o => o.status === 'Concluído').length;
+            const totalPurchases = purchases.length;
+            const totalSpent = purchases.reduce((sum, p) => sum + parseFloat(p.valorTotal || 0), 0);
+
+            let txtContent = `========================================
+RELATÓRIO MENSAL - ALMOXARIFADO SEDEICS
+========================================
+
+Período: ${months[month]} de ${year}
+Gerado em: ${new Date().toLocaleString('pt-BR')}
+
+----------------------------------------
+RESUMO GERAL
+----------------------------------------
+
+Total de Pedidos: ${totalOrders}
+Pedidos Concluídos: ${completedOrders}
+Total de Compras: ${totalPurchases}
+Valor Total Gasto: R$ ${formatNumber(totalSpent)}
+
+`;
+
+            if (orders.length > 0) {
+                txtContent += `----------------------------------------
+PEDIDOS DO PERÍODO
+----------------------------------------
+
+`;
+                orders.forEach((order, i) => {
+                    txtContent += `${i + 1}. ${order.item}
+   Solicitante: ${order.solicitante} (${order.setor})
+   Quantidade: ${order.qtd}
+   Status: ${order.status}
+   Data: ${new Date(order.timestamp).toLocaleDateString('pt-BR')}
+
+`;
+                });
+            }
+
+            if (purchases.length > 0) {
+                txtContent += `----------------------------------------
+COMPRAS REALIZADAS
+----------------------------------------
+
+`;
+                purchases.forEach((purchase, i) => {
+                    txtContent += `${i + 1}. ${purchase.fornecedor}
+   Nota Fiscal: ${purchase.notaFiscal}
+   Data: ${new Date(purchase.dataCompra || purchase.data).toLocaleDateString('pt-BR')}
+   Valor: R$ ${formatNumber(purchase.valorTotal)}
+   Responsável: ${purchase.responsavel}
+
+`;
+                });
+            }
+
+            txtContent += `========================================
+Documento gerado automaticamente pelo
+Sistema de Gestão de Almoxarifado - SEDEICS
+`;
+
+            const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `Relatorio_${months[month]}_${year}.txt`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        function exportMonthlyReportPDF() {
+            if (!currentMonthReport) return;
+
+            const months = [
+                'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+            ];
+
+            const { month, year, orders, purchases } = currentMonthReport;
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            const totalOrders = orders.length;
+            const completedOrders = orders.filter(o => o.status === 'Concluído').length;
+            const totalPurchases = purchases.length;
+            const totalSpent = purchases.reduce((sum, p) => sum + parseFloat(p.valorTotal || 0), 0);
+
+            doc.setFillColor(30, 58, 138);
+            doc.rect(0, 0, 210, 40, 'F');
+
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(20);
+            doc.setFont(undefined, 'bold');
+            doc.text('RELATÓRIO MENSAL', 105, 15, { align: 'center' });
+            
+            doc.setFontSize(14);
+            doc.setFont(undefined, 'normal');
+            doc.text(`${months[month]} de ${year}`, 105, 25, { align: 'center' });
+            
+            doc.setFontSize(9);
+            doc.text('ALMOXARIFADO - SEDEICS', 105, 32, { align: 'center' });
+
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(10);
+            let yPos = 50;
+
+            doc.setFont(undefined, 'bold');
+            doc.text('RESUMO GERAL', 20, yPos);
+            yPos += 8;
+
+            doc.setFillColor(248, 250, 252);
+            doc.rect(15, yPos - 3, 180, 30, 'F');
+
+            doc.setFont(undefined, 'normal');
+            doc.text(`Total de Pedidos: ${totalOrders}`, 20, yPos);
+            yPos += 6;
+            doc.text(`Pedidos Concluídos: ${completedOrders}`, 20, yPos);
+            yPos += 6;
+            doc.text(`Total de Compras: ${totalPurchases}`, 20, yPos);
+            yPos += 6;
+            doc.setFont(undefined, 'bold');
+            doc.text(`Valor Total Gasto: R$ ${formatNumber(totalSpent)}`, 20, yPos);
+            yPos += 12;
+
+            if (orders.length > 0) {
+                doc.setFont(undefined, 'bold');
+                doc.text('PEDIDOS DO PERÍODO', 20, yPos);
+                yPos += 8;
+
+                doc.setFont(undefined, 'normal');
+                doc.setFontSize(8);
+
+                orders.forEach((order, i) => {
+                    if (yPos > 270) {
+                        doc.addPage();
+                        yPos = 20;
+                    }
+
+                    doc.text(`${i + 1}. ${order.item} - Qtd: ${order.qtd}`, 20, yPos);
+                    yPos += 4;
+                    doc.text(`   ${order.solicitante} (${order.setor}) - ${order.status}`, 20, yPos);
+                    yPos += 6;
+                });
+
+                yPos += 4;
+            }
+
+            if (purchases.length > 0) {
+                if (yPos > 240) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+
+                doc.setFontSize(10);
+                doc.setFont(undefined, 'bold');
+                doc.text('COMPRAS REALIZADAS', 20, yPos);
+                yPos += 8;
+
+                doc.setFont(undefined, 'normal');
+                doc.setFontSize(8);
+
+                purchases.forEach((purchase, i) => {
+                    if (yPos > 270) {
+                        doc.addPage();
+                        yPos = 20;
+                    }
+
+                    doc.text(`${i + 1}. ${purchase.fornecedor} - NF: ${purchase.notaFiscal}`, 20, yPos);
+                    yPos += 4;
+                    doc.text(`   R$ ${formatNumber(purchase.valorTotal)} - ${purchase.responsavel}`, 20, yPos);
+                    yPos += 6;
+                });
+            }
+
+            const pageCount = doc.internal.getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.setFontSize(8);
+                doc.setTextColor(150, 150, 150);
+                doc.text(`Página ${i} de ${pageCount}`, 105, 290, { align: 'center' });
+                doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 105, 294, { align: 'center' });
+            }
+
+            doc.save(`Relatorio_${months[month]}_${year}.pdf`);
         }
 
         async function updateStatus(selectElement, pedidoId) {
