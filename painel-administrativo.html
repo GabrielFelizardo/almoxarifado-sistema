@@ -680,6 +680,163 @@
             margin-top: 0.5rem;
         }
 
+        .pagination-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            background: #f8fafc;
+            border-top: 1px solid var(--border);
+        }
+
+        .pagination-info {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .pagination-buttons {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .btn-page {
+            min-width: 40px;
+            height: 40px;
+            border: 2px solid var(--border);
+            background: white;
+            color: var(--text-primary);
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-page:hover:not(:disabled) {
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-1px);
+        }
+
+        .btn-page.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .btn-page:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .pagination-ellipsis {
+            color: var(--text-secondary);
+            font-weight: 600;
+            padding: 0 0.5rem;
+        }
+
+        .month-selector {
+            background: white;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .month-selector h5 {
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .month-selector h5 i {
+            color: var(--primary);
+        }
+
+        .month-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 0.5rem;
+        }
+
+        .btn-month {
+            padding: 0.75rem;
+            border: 2px solid var(--border);
+            background: white;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .btn-month:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-1px);
+        }
+
+        .btn-month.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .report-card {
+            background: white;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .report-card h6 {
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .report-card h6 i {
+            color: var(--primary);
+        }
+
+        .report-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .summary-item {
+            background: #f8fafc;
+            padding: 1rem;
+            border-radius: 6px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .summary-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .summary-value {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--primary);
+        }
+
         @media (max-width: 768px) {
             .main-container {
                 padding: 1rem;
@@ -1122,6 +1279,19 @@
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzGhyNSo1-w9TDM4BmtkMWTn6bLdwbnkcupdr7i5zZaqD6nrcMnqvPnKncVn8_nSb3A/exec";
         const LOW_STOCK_THRESHOLD = 10;
         const HIGH_STOCK_THRESHOLD = 100;
+        
+        // Paginação
+        const ITEMS_PER_PAGE = 20;
+        const STOCK_ITEMS_PER_PAGE = 10;
+        let currentOrdersPage = 1;
+        let allOrdersData = [];
+        let allInventoryData = {};
+        let currentInventoryCategory = null;
+        let currentLowStockPage = 1;
+        let currentHighStockPage = 1;
+        let currentMonthPage = 1;
+        const MONTHS_PER_PAGE = 12;
+        let currentMonthReport = null;
 
         const loadingDiv = document.getElementById('loading');
         const errorDiv = document.getElementById('error-display');
@@ -1228,6 +1398,7 @@
         async function fetchInventory() {
             try {
                 const data = await apiCall('inventory');
+                allInventoryData = data;
                 document.getElementById('inventory-display').innerHTML = buildInventoryHtml(data);
             } catch (error) {
                 console.error('Erro ao carregar inventário:', error);
@@ -1237,6 +1408,8 @@
         async function fetchOrders() {
             try {
                 const data = await apiCall('orders');
+                allOrdersData = data;
+                currentOrdersPage = 1;
                 document.getElementById('orders-display').innerHTML = buildOrdersHtml(data);
             } catch (error) {
                 console.error('Erro ao carregar pedidos:', error);
@@ -1305,10 +1478,12 @@
                                         <th style="width: 200px;">Ações</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody class="category-items" data-category="${category}">
                 `;
 
-                items.forEach(item => {
+                // Mostrar apenas primeiros 20 itens inicialmente
+                const displayItems = items.slice(0, ITEMS_PER_PAGE);
+                displayItems.forEach(item => {
                     let stockClass = 'stock-high';
                     if (item.qtd <= LOW_STOCK_THRESHOLD) stockClass = 'stock-low';
                     else if (item.qtd <= 30) stockClass = 'stock-medium';
@@ -1335,12 +1510,81 @@
                 html += `
                                 </tbody>
                             </table>
+                `;
+
+                // Adicionar paginação se tiver mais de 20 itens
+                if (items.length > ITEMS_PER_PAGE) {
+                    const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
+                    html += `
+                        <div class="pagination-container">
+                            <div class="pagination-info">
+                                Mostrando ${Math.min(ITEMS_PER_PAGE, items.length)} de ${items.length} itens
+                            </div>
+                            <div class="pagination-buttons">
+                                ${Array.from({length: totalPages}, (_, i) => `
+                                    <button class="btn-page ${i === 0 ? 'active' : ''}" 
+                                            onclick="changeCategoryPage('${category}', ${i + 1})"
+                                            data-category="${category}" data-page="${i + 1}">
+                                        ${i + 1}
+                                    </button>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                html += `
                         </div>
                     </div>
                 `;
             });
 
             return html;
+        }
+
+        function changeCategoryPage(category, page) {
+            const items = allInventoryData[category].sort((a, b) => a.nome.localeCompare(b.nome));
+            const start = (page - 1) * ITEMS_PER_PAGE;
+            const end = start + ITEMS_PER_PAGE;
+            const displayItems = items.slice(start, end);
+
+            const tbody = document.querySelector(`.category-items[data-category="${category}"]`);
+            tbody.innerHTML = '';
+
+            displayItems.forEach(item => {
+                let stockClass = 'stock-high';
+                if (item.qtd <= LOW_STOCK_THRESHOLD) stockClass = 'stock-low';
+                else if (item.qtd <= 30) stockClass = 'stock-medium';
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td><span class="sku-code">${item.sku}</span></td>
+                        <td><strong>${item.nome}</strong></td>
+                        <td><span class="stock-badge ${stockClass}">${item.qtd}</span></td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button class="btn btn-primary" onclick="openAddStockModal('${item.nome.replace(/'/g, "\\'")}', ${item.qtd})">
+                                    <i class="fas fa-plus"></i> Adicionar
+                                </button>
+                                <button class="btn btn-danger" onclick="deleteItem('${item.nome.replace(/'/g, "\\'")}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            // Atualizar botões de paginação
+            document.querySelectorAll(`.btn-page[data-category="${category}"]`).forEach(btn => {
+                btn.classList.toggle('active', parseInt(btn.dataset.page) === page);
+            });
+
+            // Atualizar info de paginação
+            const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
+            const paginationInfo = tbody.closest('.table-container').querySelector('.pagination-info');
+            const showing = Math.min(end, items.length);
+            paginationInfo.textContent = `Mostrando ${start + 1}-${showing} de ${items.length} itens`;
         }
 
         function buildOrdersHtml(data) {
@@ -1353,6 +1597,11 @@
                     </div>
                 `;
             }
+
+            const totalPages = Math.ceil(data.length / ITEMS_PER_PAGE);
+            const start = (currentOrdersPage - 1) * ITEMS_PER_PAGE;
+            const end = start + ITEMS_PER_PAGE;
+            const pageData = data.slice(start, end);
 
             let html = `
                 <div class="table-container">
@@ -1371,7 +1620,7 @@
                         <tbody>
             `;
 
-            data.forEach(order => {
+            pageData.forEach(order => {
                 const orderDate = new Date(order.timestamp).toLocaleDateString('pt-BR');
                 
                 let statusClass = {
@@ -1424,10 +1673,58 @@
             html += `
                         </tbody>
                     </table>
-                </div>
             `;
 
+            // Adicionar paginação se necessário
+            if (totalPages > 1) {
+                html += `
+                    <div class="pagination-container">
+                        <div class="pagination-info">
+                            Mostrando ${start + 1}-${Math.min(end, data.length)} de ${data.length} pedidos
+                        </div>
+                        <div class="pagination-buttons">
+                            <button class="btn-page" onclick="changeOrdersPage(${currentOrdersPage - 1})" 
+                                    ${currentOrdersPage === 1 ? 'disabled' : ''}>
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            ${Array.from({length: Math.min(totalPages, 5)}, (_, i) => {
+                                let page;
+                                if (totalPages <= 5) {
+                                    page = i + 1;
+                                } else if (currentOrdersPage <= 3) {
+                                    page = i + 1;
+                                } else if (currentOrdersPage >= totalPages - 2) {
+                                    page = totalPages - 4 + i;
+                                } else {
+                                    page = currentOrdersPage - 2 + i;
+                                }
+                                return `
+                                    <button class="btn-page ${page === currentOrdersPage ? 'active' : ''}" 
+                                            onclick="changeOrdersPage(${page})">
+                                        ${page}
+                                    </button>
+                                `;
+                            }).join('')}
+                            ${totalPages > 5 ? `<span class="pagination-ellipsis">...</span>` : ''}
+                            <button class="btn-page" onclick="changeOrdersPage(${currentOrdersPage + 1})" 
+                                    ${currentOrdersPage === totalPages ? 'disabled' : ''}>
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            html += `</div>`;
             return html;
+        }
+
+        function changeOrdersPage(page) {
+            const totalPages = Math.ceil(allOrdersData.length / ITEMS_PER_PAGE);
+            if (page < 1 || page > totalPages) return;
+            
+            currentOrdersPage = page;
+            document.getElementById('orders-display').innerHTML = buildOrdersHtml(allOrdersData);
         }
 
         function buildPurchasesHtml(data) {
@@ -1699,6 +1996,56 @@ Sistema de Gestão de Almoxarifado - SEDEICS
                 }).join('');
             };
 
+            const renderPaginatedList = (items, currentPage, type, colorClass = 'primary') => {
+                if (!items || items.length === 0) {
+                    return `<li class="list-group-item text-center" style="color: #94a3b8;">Nenhum dado disponível</li>`;
+                }
+
+                const totalPages = Math.ceil(items.length / STOCK_ITEMS_PER_PAGE);
+                const start = (currentPage - 1) * STOCK_ITEMS_PER_PAGE;
+                const end = start + STOCK_ITEMS_PER_PAGE;
+                const pageItems = items.slice(start, end);
+
+                let html = pageItems.map((item, index) => {
+                    const name = item[0];
+                    const count = item[1];
+                    const rank = start + index + 1;
+                    
+                    return `
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong style="color: #1e3a8a; margin-right: 0.5rem;">#${rank}</strong>
+                                ${name}
+                            </div>
+                            <span class="badge bg-${colorClass}">${count}</span>
+                        </li>
+                    `;
+                }).join('');
+
+                if (totalPages > 1) {
+                    html += `
+                        <li class="list-group-item" style="padding: 0.5rem; background: #f8fafc;">
+                            <div class="mini-pagination">
+                                <button class="btn-mini-page" onclick="changeStockPage('${type}', ${currentPage - 1})" 
+                                        ${currentPage === 1 ? 'disabled' : ''}>
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <span class="mini-page-info">${currentPage} / ${totalPages}</span>
+                                <button class="btn-mini-page" onclick="changeStockPage('${type}', ${currentPage + 1})" 
+                                        ${currentPage === totalPages ? 'disabled' : ''}>
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                        </li>
+                    `;
+                }
+
+                return html;
+            };
+
+            // Salvar dados para paginação
+            window.analyticsData = data;
+
             return `
                 <div class="kpi-grid">
                     <div class="kpi-card">
@@ -1756,6 +2103,23 @@ Sistema de Gestão de Almoxarifado - SEDEICS
                     </div>
                 </div>
 
+                <hr>
+
+                <div class="month-selector">
+                    <h5>
+                        <i class="fas fa-calendar-alt"></i>
+                        Relatórios Mensais
+                    </h5>
+                    <p style="color: var(--text-secondary); margin-bottom: 1rem;">Selecione um mês para ver o relatório detalhado de pedidos e compras</p>
+                    <div id="monthNavigationContainer">
+                        ${generateMonthButtons()}
+                    </div>
+                </div>
+
+                <div id="monthlyReportContainer"></div>
+
+                <hr>
+
                 <div class="row g-3 mt-2">
                     <div class="col-lg-4">
                         <div class="top-items-section">
@@ -1781,17 +2145,258 @@ Sistema de Gestão de Almoxarifado - SEDEICS
                     <div class="col-lg-6">
                         <div class="top-items-section">
                             <h5><i class="fas fa-exclamation-circle"></i> Estoque Baixo (≤ ${LOW_STOCK_THRESHOLD})</h5>
-                            <ul class="list-group">${renderList(data.lowStockItems, false, 'danger')}</ul>
+                            <ul class="list-group" id="lowStockList">
+                                ${renderPaginatedList(data.lowStockItems, currentLowStockPage, 'low', 'danger')}
+                            </ul>
                         </div>
                     </div>
                     <div class="col-lg-6">
                         <div class="top-items-section">
                             <h5><i class="fas fa-check-circle"></i> Estoque Alto (≥ ${HIGH_STOCK_THRESHOLD})</h5>
-                            <ul class="list-group">${renderList(data.highStockItems, false, 'success')}</ul>
+                            <ul class="list-group" id="highStockList">
+                                ${renderPaginatedList(data.highStockItems, currentHighStockPage, 'high', 'success')}
+                            </ul>
                         </div>
                     </div>
                 </div>
             `;
+        }
+
+        function changeStockPage(type, page) {
+            if (!window.analyticsData) return;
+
+            if (type === 'low') {
+                const totalPages = Math.ceil(window.analyticsData.lowStockItems.length / STOCK_ITEMS_PER_PAGE);
+                if (page < 1 || page > totalPages) return;
+                currentLowStockPage = page;
+
+                const start = (page - 1) * STOCK_ITEMS_PER_PAGE;
+                const end = start + STOCK_ITEMS_PER_PAGE;
+                const pageItems = window.analyticsData.lowStockItems.slice(start, end);
+
+                let html = pageItems.map((item, index) => {
+                    const rank = start + index + 1;
+                    return `
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong style="color: #1e3a8a; margin-right: 0.5rem;">#${rank}</strong>
+                                ${item[0]}
+                            </div>
+                            <span class="badge bg-danger">${item[1]}</span>
+                        </li>
+                    `;
+                }).join('');
+
+                if (totalPages > 1) {
+                    html += `
+                        <li class="list-group-item" style="padding: 0.5rem; background: #f8fafc;">
+                            <div class="mini-pagination">
+                                <button class="btn-mini-page" onclick="changeStockPage('low', ${page - 1})" 
+                                        ${page === 1 ? 'disabled' : ''}>
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <span class="mini-page-info">${page} / ${totalPages}</span>
+                                <button class="btn-mini-page" onclick="changeStockPage('low', ${page + 1})" 
+                                        ${page === totalPages ? 'disabled' : ''}>
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                        </li>
+                    `;
+                }
+
+                document.getElementById('lowStockList').innerHTML = html;
+            } else if (type === 'high') {
+                const totalPages = Math.ceil(window.analyticsData.highStockItems.length / STOCK_ITEMS_PER_PAGE);
+                if (page < 1 || page > totalPages) return;
+                currentHighStockPage = page;
+
+                const start = (page - 1) * STOCK_ITEMS_PER_PAGE;
+                const end = start + STOCK_ITEMS_PER_PAGE;
+                const pageItems = window.analyticsData.highStockItems.slice(start, end);
+
+                let html = pageItems.map((item, index) => {
+                    const rank = start + index + 1;
+                    return `
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong style="color: #1e3a8a; margin-right: 0.5rem;">#${rank}</strong>
+                                ${item[0]}
+                            </div>
+                            <span class="badge bg-success">${item[1]}</span>
+                        </li>
+                    `;
+                }).join('');
+
+                if (totalPages > 1) {
+                    html += `
+                        <li class="list-group-item" style="padding: 0.5rem; background: #f8fafc;">
+                            <div class="mini-pagination">
+                                <button class="btn-mini-page" onclick="changeStockPage('high', ${page - 1})" 
+                                        ${page === 1 ? 'disabled' : ''}>
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <span class="mini-page-info">${page} / ${totalPages}</span>
+                                <button class="btn-mini-page" onclick="changeStockPage('high', ${page + 1})" 
+                                        ${page === totalPages ? 'disabled' : ''}>
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                        </li>
+                    `;
+                }
+
+                document.getElementById('highStockList').innerHTML = html;
+            }
+        }
+
+        function generateMonthButtons() {
+            const months = [
+                'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+            ];
+            const currentMonth = new Date().getMonth();
+            const currentYear = new Date().getFullYear();
+            
+            let html = '';
+            for (let i = 0; i < 12; i++) {
+                const monthIndex = (currentMonth - 11 + i + 12) % 12;
+                const year = currentMonth - 11 + i < 0 ? currentYear - 1 : currentYear;
+                html += `
+                    <button class="btn-month" onclick="loadMonthlyReport(${monthIndex}, ${year})">
+                        ${months[monthIndex]}<br>
+                        <small style="font-size: 0.8rem; opacity: 0.7;">${year}</small>
+                    </button>
+                `;
+            }
+            return html;
+        }
+
+        async function loadMonthlyReport(month, year) {
+            const months = [
+                'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+            ];
+
+            // Atualizar botões ativos
+            document.querySelectorAll('.btn-month').forEach(btn => btn.classList.remove('active'));
+            event.target.closest('.btn-month').classList.add('active');
+
+            const container = document.getElementById('monthlyReportContainer');
+            container.innerHTML = '<div class="text-center py-4"><div class="spinner-border" role="status"></div></div>';
+
+            try {
+                // Buscar pedidos e compras
+                const orders = await apiCall('orders');
+                const purchases = await apiCall('purchases');
+
+                // Filtrar por mês
+                const startDate = new Date(year, month, 1);
+                const endDate = new Date(year, month + 1, 0, 23, 59, 59);
+
+                const monthOrders = orders.filter(order => {
+                    const orderDate = new Date(order.timestamp);
+                    return orderDate >= startDate && orderDate <= endDate;
+                });
+
+                const monthPurchases = purchases.filter(purchase => {
+                    const purchaseDate = new Date(purchase.dataCompra || purchase.data);
+                    return purchaseDate >= startDate && purchaseDate <= endDate;
+                });
+
+                // Calcular estatísticas
+                const totalOrders = monthOrders.length;
+                const completedOrders = monthOrders.filter(o => o.status === 'Concluído').length;
+                const totalPurchases = monthPurchases.length;
+                const totalSpent = monthPurchases.reduce((sum, p) => sum + parseFloat(p.valorTotal || 0), 0);
+
+                // Itens mais pedidos do mês
+                const itemCounts = {};
+                monthOrders.forEach(order => {
+                    itemCounts[order.item] = (itemCounts[order.item] || 0) + parseInt(order.qtd);
+                });
+                const topItems = Object.entries(itemCounts)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 5);
+
+                container.innerHTML = `
+                    <div class="report-card">
+                        <h6>
+                            <i class="fas fa-chart-line"></i>
+                            Relatório de ${months[month]} ${year}
+                        </h6>
+                        
+                        <div class="report-summary">
+                            <div class="summary-item">
+                                <div class="summary-label">Total de Pedidos</div>
+                                <div class="summary-value">${totalOrders}</div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-label">Pedidos Concluídos</div>
+                                <div class="summary-value">${completedOrders}</div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-label">Total de Compras</div>
+                                <div class="summary-value">${totalPurchases}</div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-label">Valor Gasto</div>
+                                <div class="summary-value" style="font-size: 1.2rem;">${formatCurrency(totalSpent)}</div>
+                            </div>
+                        </div>
+
+                        ${topItems.length > 0 ? `
+                            <hr>
+                            <h6><i class="fas fa-star"></i> Itens Mais Solicitados</h6>
+                            <ul class="list-group">
+                                ${topItems.map(([item, count], index) => `
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong style="color: #1e3a8a; margin-right: 0.5rem;">#${index + 1}</strong>
+                                            ${item}
+                                        </div>
+                                        <span class="badge bg-primary">${count}</span>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        ` : ''}
+
+                        ${monthPurchases.length > 0 ? `
+                            <hr>
+                            <h6><i class="fas fa-shopping-cart"></i> Compras Realizadas</h6>
+                            <div class="table-container">
+                                <table class="table table-sm mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Data</th>
+                                            <th>Nota Fiscal</th>
+                                            <th>Fornecedor</th>
+                                            <th>Valor</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${monthPurchases.map(p => `
+                                            <tr>
+                                                <td>${new Date(p.dataCompra || p.data).toLocaleDateString('pt-BR')}</td>
+                                                <td><span class="sku-code">${p.notaFiscal}</span></td>
+                                                <td>${p.fornecedor}</td>
+                                                <td><strong style="color: var(--success);">${formatCurrency(p.valorTotal)}</strong></td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            } catch (error) {
+                container.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Erro ao carregar relatório: ${error.message}
+                    </div>
+                `;
+            }
         }
 
         async function updateStatus(selectElement, pedidoId) {
