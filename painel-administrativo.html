@@ -1055,13 +1055,19 @@
                 </div>
                 <div class="modal-body">
                     <div class="row">
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-4 mb-3">
+                            <label for="dataCompra" class="form-label fw-bold">
+                                <i class="fas fa-calendar-alt"></i> Data da Compra (NF):
+                            </label>
+                            <input type="date" class="form-control" id="dataCompra" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
                             <label for="notaFiscal" class="form-label fw-bold">
                                 <i class="fas fa-file-invoice"></i> Número da Nota Fiscal:
                             </label>
                             <input type="text" class="form-control" id="notaFiscal" placeholder="Ex: NF-12345" required>
                         </div>
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-4 mb-3">
                             <label for="fornecedor" class="form-label fw-bold">
                                 <i class="fas fa-store"></i> Fornecedor/Loja:
                             </label>
@@ -1424,7 +1430,7 @@
                     <table class="table table-hover mb-0">
                         <thead>
                             <tr>
-                                <th>Data</th>
+                                <th>Data da Compra</th>
                                 <th>Nota Fiscal</th>
                                 <th>Fornecedor</th>
                                 <th>Itens</th>
@@ -1437,7 +1443,13 @@
             `;
 
             data.forEach((purchase, index) => {
-                const purchaseDate = new Date(purchase.data).toLocaleDateString('pt-BR');
+                // Data da compra (NF) ou data de registro
+                let dataExibicao = purchase.data;
+                if (purchase.dataCompra) {
+                    dataExibicao = purchase.dataCompra;
+                }
+                const purchaseDate = new Date(dataExibicao).toLocaleDateString('pt-BR');
+                
                 let itens = [];
                 try {
                     itens = JSON.parse(purchase.itens);
@@ -1484,7 +1496,10 @@
 
         function exportPurchaseTXT(index) {
             const purchase = window.purchasesData[index];
-            const purchaseDate = new Date(purchase.data).toLocaleString('pt-BR');
+            
+            // Usar data da compra se disponível, senão usar data de registro
+            let dataExibicao = purchase.dataCompra || purchase.data;
+            const purchaseDate = new Date(dataExibicao).toLocaleString('pt-BR');
             
             let itens = [];
             try {
@@ -1497,7 +1512,7 @@
 REGISTRO DE COMPRA - ALMOXARIFADO SEDEICS
 ========================================
 
-Data da Compra: ${purchaseDate}
+Data da Compra (NF): ${purchaseDate}
 Nota Fiscal: ${purchase.notaFiscal}
 Fornecedor: ${purchase.fornecedor}
 Responsável: ${purchase.responsavel}
@@ -1543,7 +1558,10 @@ Sistema de Gestão de Almoxarifado - SEDEICS
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
 
-            const purchaseDate = new Date(purchase.data).toLocaleDateString('pt-BR');
+            // Usar data da compra se disponível, senão usar data de registro
+            let dataExibicao = purchase.dataCompra || purchase.data;
+            const purchaseDate = new Date(dataExibicao).toLocaleDateString('pt-BR');
+            
             let itens = [];
             try {
                 itens = JSON.parse(purchase.itens);
@@ -1575,7 +1593,7 @@ Sistema de Gestão de Almoxarifado - SEDEICS
             yPos += 8;
 
             doc.setFont(undefined, 'normal');
-            doc.text(`Data: ${purchaseDate}`, 20, yPos);
+            doc.text(`Data da Compra (NF): ${purchaseDate}`, 20, yPos);
             yPos += 6;
             doc.text(`Nota Fiscal: ${purchase.notaFiscal}`, 20, yPos);
             yPos += 6;
@@ -1923,6 +1941,7 @@ Sistema de Gestão de Almoxarifado - SEDEICS
         });
 
         document.getElementById('addPurchaseModal').addEventListener('hidden.bs.modal', () => {
+            document.getElementById('dataCompra').value = '';
             document.getElementById('notaFiscal').value = '';
             document.getElementById('fornecedor').value = '';
             document.getElementById('responsavel').value = '';
@@ -1933,11 +1952,12 @@ Sistema de Gestão de Almoxarifado - SEDEICS
 
         document.getElementById('savePurchaseButton').addEventListener('click', async (e) => {
             const btn = e.target;
+            const dataCompra = document.getElementById('dataCompra').value;
             const notaFiscal = document.getElementById('notaFiscal').value.trim();
             const fornecedor = document.getElementById('fornecedor').value.trim();
             const responsavel = document.getElementById('responsavel').value.trim();
             
-            if (!notaFiscal || !fornecedor || !responsavel) {
+            if (!dataCompra || !notaFiscal || !fornecedor || !responsavel) {
                 alert('Preencha todos os campos obrigatórios.');
                 return;
             }
@@ -1971,6 +1991,7 @@ Sistema de Gestão de Almoxarifado - SEDEICS
             try {
                 await apiCall(null, {
                     action: 'registerPurchase',
+                    dataCompra,
                     notaFiscal,
                     fornecedor,
                     responsavel,
