@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -212,6 +213,29 @@
             top: 50%;
             transform: translateY(-50%);
             color: var(--text-secondary);
+        }
+
+        /* Loading Skeleton */
+        .skeleton {
+            background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 6px;
+        }
+
+        .skeleton-card {
+            height: 120px;
+            margin-bottom: 1rem;
+        }
+
+        .skeleton-row {
+            height: 50px;
+            margin-bottom: 0.5rem;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
         }
 
         .kpi-grid {
@@ -451,6 +475,12 @@
             color: #065f46;
         }
 
+        .status-cancelado {
+            background: #fee2e2;
+            border-color: var(--danger);
+            color: #991b1b;
+        }
+
         .btn {
             border-radius: 6px;
             font-weight: 600;
@@ -662,6 +692,43 @@
 
         .purchase-item-row:hover {
             border-color: var(--primary);
+        }
+
+        .autocomplete-wrapper {
+            position: relative;
+        }
+
+        .autocomplete-results {
+            position: absolute;
+            z-index: 1000;
+            background: white;
+            border: 2px solid var(--primary);
+            border-top: none;
+            border-radius: 0 0 6px 6px;
+            max-height: 200px;
+            overflow-y: auto;
+            width: 100%;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .autocomplete-item {
+            padding: 0.75rem;
+            cursor: pointer;
+            transition: background 0.2s;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .autocomplete-item:hover {
+            background: #f8fafc;
+        }
+
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+
+        .autocomplete-item small {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
         }
 
         .total-calculator {
@@ -1224,7 +1291,7 @@
 
         <div class="page-footer">
             <p class="copyright">
-                © 2025 SEDEICS - Secretaria de Desenvolvimento Econômico, Indústria, Comércio e Serviços
+                © <span id="current-year"></span> SEDEICS - Secretaria de Desenvolvimento Econômico, Indústria, Comércio e Serviços
             </p>
             <p class="developer">
                 Desenvolvido por Gabriel Felizardo da Silva
@@ -1368,544 +1435,650 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const ADMIN_PASSWORD_HASH = 'f788c6adb4f9fda87b064468ead05318f614753b7b62a6a655e284bd6e364f55';
-        const SESSION_KEY = 'sedeics_auth';
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzGhyNSo1-w9TDM4BmtkMWTn6bLdwbnkcupdr7i5zZaqD6nrcMnqvPnKncVn8_nSb3A/exec";
-        const LOW_STOCK_THRESHOLD = 10;
-        const HIGH_STOCK_THRESHOLD = 100;
-        const SYSTEM_START_MONTH = 8;
-        const SYSTEM_START_YEAR = 2025;
+const SESSION_KEY = 'sedeics_auth';
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzGhyNSo1-w9TDM4BmtkMWTn6bLdwbnkcupdr7i5zZaqD6nrcMnqvPnKncVn8_nSb3A/exec";
+const LOW_STOCK_THRESHOLD = 10;
+const HIGH_STOCK_THRESHOLD = 100;
+const SYSTEM_START_MONTH = 8;
+const SYSTEM_START_YEAR = 2025;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+
+const ITEMS_PER_PAGE = 20;
+const STOCK_ITEMS_PER_PAGE = 10;
+const MONTHS_PER_PAGE_DISPLAY = 12;
+let currentOrdersPage = 1;
+let allOrdersData = [];
+let allInventoryData = {};
+let allMaterialsList = []; // Nova variável para autocomplete
+let currentInventoryCategory = null;
+let currentLowStockPage = 1;
+let currentHighStockPage = 1;
+let currentMonthsPage = 1;
+let currentMonthReport = null;
+
+const loadingDiv = document.getElementById('loading');
+const errorDiv = document.getElementById('error-display');
+const addStockModal = new bootstrap.Modal(document.getElementById('addStockModal'));
+const addNewItemModal = new bootstrap.Modal(document.getElementById('addNewItemModal'));
+const addPurchaseModal = new bootstrap.Modal(document.getElementById('addPurchaseModal'));
+
+// Funções de Cache
+function getCache(key) {
+    try {
+        const cached = sessionStorage.getItem(key);
+        if (!cached) return null;
         
-        const ITEMS_PER_PAGE = 20;
-        const STOCK_ITEMS_PER_PAGE = 10;
-        const MONTHS_PER_PAGE_DISPLAY = 12;
-        let currentOrdersPage = 1;
-        let allOrdersData = [];
-        let allInventoryData = {};
-        let currentInventoryCategory = null;
-        let currentLowStockPage = 1;
-        let currentHighStockPage = 1;
-        let currentMonthsPage = 1;
-        let currentMonthReport = null;
-
-        const loadingDiv = document.getElementById('loading');
-        const errorDiv = document.getElementById('error-display');
-        const addStockModal = new bootstrap.Modal(document.getElementById('addStockModal'));
-        const addNewItemModal = new bootstrap.Modal(document.getElementById('addNewItemModal'));
-        const addPurchaseModal = new bootstrap.Modal(document.getElementById('addPurchaseModal'));
-
-        const showLoading = (show) => loadingDiv.style.display = show ? 'block' : 'none';
-        const showError = (message) => { errorDiv.textContent = message; errorDiv.style.display = 'block'; };
-        const hideMessages = () => errorDiv.style.display = 'none';
-
-        async function sha256(message) {
-            const msgBuffer = new TextEncoder().encode(message);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-            return hashHex;
+        const { data, timestamp } = JSON.parse(cached);
+        if (Date.now() - timestamp > CACHE_DURATION) {
+            sessionStorage.removeItem(key);
+            return null;
         }
+        return data;
+    } catch {
+        return null;
+    }
+}
 
-        function checkAuth() {
-            const isAuthenticated = sessionStorage.getItem(SESSION_KEY);
-            if (isAuthenticated === 'true') {
-                showMainContent();
-            }
+function setCache(key, data) {
+    try {
+        sessionStorage.setItem(key, JSON.stringify({
+            data,
+            timestamp: Date.now()
+        }));
+    } catch (e) {
+        console.warn('Cache storage failed:', e);
+    }
+}
+
+function clearCache() {
+    const keys = Object.keys(sessionStorage);
+    keys.forEach(key => {
+        if (key.startsWith('cache_')) {
+            sessionStorage.removeItem(key);
         }
+    });
+}
 
-        function showMainContent() {
-            document.getElementById('authOverlay').style.display = 'none';
-            document.getElementById('govHeader').style.display = 'block';
-            document.getElementById('mainContent').style.display = 'block';
-            fetchInventory();
-        }
+const showLoading = (show) => loadingDiv.style.display = show ? 'block' : 'none';
+const showError = (message) => { errorDiv.textContent = message; errorDiv.style.display = 'block'; };
+const hideMessages = () => errorDiv.style.display = 'none';
 
-        document.getElementById('loginForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const passwordInput = document.getElementById('passwordInput');
-            const errorMessage = document.getElementById('errorMessage');
-            const loginButton = document.getElementById('loginButton');
-            
-            loginButton.disabled = true;
-            loginButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Verificando...';
-            
-            const inputHash = await sha256(passwordInput.value);
-            
+// Ano automático no rodapé
+document.getElementById('current-year').textContent = new Date().getFullYear();
+
+async function sha256(message) {
+    const msgBuffer = new TextEncoder().encode(message);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashHex;
+}
+
+function checkAuth() {
+    const isAuthenticated = sessionStorage.getItem(SESSION_KEY);
+    if (isAuthenticated === 'true') {
+        showMainContent();
+    }
+}
+
+function showMainContent() {
+    document.getElementById('authOverlay').style.display = 'none';
+    document.getElementById('govHeader').style.display = 'block';
+    document.getElementById('mainContent').style.display = 'block';
+    fetchInventory();
+}
+
+document.getElementById('loginForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const passwordInput = document.getElementById('passwordInput');
+    const errorMessage = document.getElementById('errorMessage');
+    const loginButton = document.getElementById('loginButton');
+    
+    loginButton.disabled = true;
+    loginButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Verificando...';
+    
+    const inputHash = await sha256(passwordInput.value);
+    
+    setTimeout(() => {
+        if (inputHash === ADMIN_PASSWORD_HASH) {
+            sessionStorage.setItem(SESSION_KEY, 'true');
+            errorMessage.style.display = 'none';
+            showMainContent();
+        } else {
+            errorMessage.style.display = 'block';
+            passwordInput.value = '';
+            passwordInput.focus();
+            errorMessage.style.animation = 'shake 0.5s';
             setTimeout(() => {
-                if (inputHash === ADMIN_PASSWORD_HASH) {
-                    sessionStorage.setItem(SESSION_KEY, 'true');
-                    errorMessage.style.display = 'none';
-                    showMainContent();
-                } else {
-                    errorMessage.style.display = 'block';
-                    passwordInput.value = '';
-                    passwordInput.focus();
-                    errorMessage.style.animation = 'shake 0.5s';
-                    setTimeout(() => {
-                        errorMessage.style.animation = '';
-                    }, 500);
-                }
-                
-                loginButton.disabled = false;
-                loginButton.innerHTML = '<i class="fas fa-sign-in-alt"></i> Acessar Painel';
-            }, 800);
+                errorMessage.style.animation = '';
+            }, 500);
+        }
+        
+        loginButton.disabled = false;
+        loginButton.innerHTML = '<i class="fas fa-sign-in-alt"></i> Acessar Painel';
+    }, 800);
+});
+
+checkAuth();
+
+function formatCurrency(value) {
+    return parseFloat(value).toLocaleString('pt-BR', { 
+        style: 'currency', 
+        currency: 'BRL',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+}
+
+function formatNumber(value) {
+    return parseFloat(value).toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+}
+
+async function apiCall(page = null, payload = null, useCache = true) {
+    hideMessages();
+    
+    // Verificar cache primeiro
+    if (page && useCache && !payload) {
+        const cached = getCache(`cache_${page}`);
+        if (cached) {
+            console.log(`Usando cache para: ${page}`);
+            return cached;
+        }
+    }
+    
+    showLoading(true);
+    const url = page ? `${SCRIPT_URL}?page=${page}` : SCRIPT_URL;
+    const options = payload ? { method: 'POST', mode: 'cors', body: JSON.stringify(payload) } : { method: 'GET' };
+    
+    try {
+        const response = await fetch(url, options);
+        if (!response.ok) throw new Error(`Erro: ${response.statusText}`);
+        const data = await response.json();
+        if (data.error || data.result === 'error') throw new Error(data.error || data.message);
+        
+        // Salvar no cache
+        if (page && useCache && !payload) {
+            setCache(`cache_${page}`, data);
+        }
+        
+        return data;
+    } catch (error) {
+        showError(error.message);
+        throw error;
+    } finally {
+        showLoading(false);
+    }
+}
+
+async function fetchInventory() {
+    try {
+        const data = await apiCall('inventory', null, true);
+        allInventoryData = data;
+        
+        // Criar lista de materiais para autocomplete
+        allMaterialsList = [];
+        Object.keys(data).forEach(category => {
+            data[category].forEach(item => {
+                allMaterialsList.push({
+                    nome: item.nome,
+                    categoria: category
+                });
+            });
+        });
+        
+        document.getElementById('inventory-display').innerHTML = buildInventoryHtml(data);
+    } catch (error) {
+        console.error('Erro ao carregar inventário:', error);
+    }
+}
+
+async function fetchOrders() {
+    try {
+        const data = await apiCall('orders', null, true);
+        allOrdersData = data;
+        currentOrdersPage = 1;
+        document.getElementById('orders-display').innerHTML = buildOrdersHtml(data);
+    } catch (error) {
+        console.error('Erro ao carregar pedidos:', error);
+    }
+}
+
+async function fetchPurchases() {
+    try {
+        const data = await apiCall('purchases', null, true);
+        window.purchasesData = data;
+        document.getElementById('purchases-display').innerHTML = buildPurchasesHtml(data);
+    } catch (error) {
+        console.error('Erro ao carregar compras:', error);
+    }
+}
+
+async function fetchAnalytics() {
+    try {
+        const data = await apiCall('analytics', null, true);
+        document.getElementById('analytics-display').innerHTML = buildAnalyticsHtml(data);
+    } catch (error) {
+        console.error('Erro ao carregar relatórios:', error);
+    }
+}
+
+function buildInventoryHtml(data) {
+    const sortedCategories = Object.keys(data).sort();
+    
+    if (sortedCategories.length === 0) {
+        return `
+            <div class="empty-state">
+                <i class="fas fa-inbox"></i>
+                <h5>Nenhum item no inventário</h5>
+                <p>Adicione novos materiais para começar</p>
+            </div>
+        `;
+    }
+
+    let html = '';
+    const categoryIcons = {
+        'Material de Escritório': 'fas fa-pen',
+        'Material para Copa': 'fas fa-mug-hot',
+        'Material de Limpeza': 'fas fa-broom'
+    };
+
+    sortedCategories.forEach(category => {
+        const items = data[category].sort((a, b) => a.nome.localeCompare(b.nome));
+        const icon = categoryIcons[category] || 'fas fa-box';
+        
+        html += `
+            <div class="category-section">
+                <div class="category-header">
+                    <div class="category-title">
+                        <i class="${icon}"></i>
+                        ${category}
+                    </div>
+                    <span class="category-badge">${items.length} itens</span>
+                </div>
+                <div class="table-container">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width: 140px;">Código</th>
+                                <th>Material</th>
+                                <th style="width: 130px;">Estoque</th>
+                                <th style="width: 200px;">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody class="category-items" data-category="${category}">
+        `;
+
+        const displayItems = items.slice(0, ITEMS_PER_PAGE);
+        displayItems.forEach(item => {
+            let stockClass = 'stock-high';
+            if (item.qtd <= LOW_STOCK_THRESHOLD) stockClass = 'stock-low';
+            else if (item.qtd <= 30) stockClass = 'stock-medium';
+
+            html += `
+                <tr>
+                    <td><span class="sku-code">${item.sku}</span></td>
+                    <td><strong>${item.nome}</strong></td>
+                    <td><span class="stock-badge ${stockClass}">${item.qtd}</span></td>
+                    <td>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button class="btn btn-primary" onclick="openAddStockModal('${item.nome.replace(/'/g, "\\'")}', ${item.qtd})">
+                                <i class="fas fa-plus"></i> Adicionar
+                            </button>
+                            <button class="btn btn-danger" onclick="deleteItem('${item.nome.replace(/'/g, "\\'")}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
         });
 
-        checkAuth();
+        html += `
+                        </tbody>
+                    </table>
+        `;
 
-        function formatCurrency(value) {
-            return parseFloat(value).toLocaleString('pt-BR', { 
-                style: 'currency', 
-                currency: 'BRL',
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            });
-        }
-
-        function formatNumber(value) {
-            return parseFloat(value).toLocaleString('pt-BR', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            });
-        }
-
-        async function apiCall(page = null, payload = null) {
-            hideMessages();
-            showLoading(true);
-            const url = page ? `${SCRIPT_URL}?page=${page}` : SCRIPT_URL;
-            const options = payload ? { method: 'POST', mode: 'cors', body: JSON.stringify(payload) } : { method: 'GET' };
-            
-            try {
-                const response = await fetch(url, options);
-                if (!response.ok) throw new Error(`Erro: ${response.statusText}`);
-                const data = await response.json();
-                if (data.error || data.result === 'error') throw new Error(data.error || data.message);
-                return data;
-            } catch (error) {
-                showError(error.message);
-                throw error;
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        async function fetchInventory() {
-            try {
-                const data = await apiCall('inventory');
-                allInventoryData = data;
-                document.getElementById('inventory-display').innerHTML = buildInventoryHtml(data);
-            } catch (error) {
-                console.error('Erro ao carregar inventário:', error);
-            }
-        }
-
-        async function fetchOrders() {
-            try {
-                const data = await apiCall('orders');
-                allOrdersData = data;
-                currentOrdersPage = 1;
-                document.getElementById('orders-display').innerHTML = buildOrdersHtml(data);
-            } catch (error) {
-                console.error('Erro ao carregar pedidos:', error);
-            }
-        }
-
-        async function fetchPurchases() {
-            try {
-                const data = await apiCall('purchases');
-                window.purchasesData = data;
-                document.getElementById('purchases-display').innerHTML = buildPurchasesHtml(data);
-            } catch (error) {
-                console.error('Erro ao carregar compras:', error);
-            }
-        }
-
-        async function fetchAnalytics() {
-            try {
-                const data = await apiCall('analytics');
-                document.getElementById('analytics-display').innerHTML = buildAnalyticsHtml(data);
-            } catch (error) {
-                console.error('Erro ao carregar relatórios:', error);
-            }
-        }
-
-        function buildInventoryHtml(data) {
-            const sortedCategories = Object.keys(data).sort();
-            
-            if (sortedCategories.length === 0) {
-                return `
-                    <div class="empty-state">
-                        <i class="fas fa-inbox"></i>
-                        <h5>Nenhum item no inventário</h5>
-                        <p>Adicione novos materiais para começar</p>
-                    </div>
-                `;
-            }
-
-            let html = '';
-            const categoryIcons = {
-                'Material de Escritório': 'fas fa-pen',
-                'Material para Copa': 'fas fa-mug-hot',
-                'Material de Limpeza': 'fas fa-broom'
-            };
-
-            sortedCategories.forEach(category => {
-                const items = data[category].sort((a, b) => a.nome.localeCompare(b.nome));
-                const icon = categoryIcons[category] || 'fas fa-box';
-                
-                html += `
-                    <div class="category-section">
-                        <div class="category-header">
-                            <div class="category-title">
-                                <i class="${icon}"></i>
-                                ${category}
-                            </div>
-                            <span class="category-badge">${items.length} itens</span>
-                        </div>
-                        <div class="table-container">
-                            <table class="table table-hover mb-0">
-                                <thead>
-                                    <tr>
-                                        <th style="width: 140px;">Código</th>
-                                        <th>Material</th>
-                                        <th style="width: 130px;">Estoque</th>
-                                        <th style="width: 200px;">Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="category-items" data-category="${category}">
-                `;
-
-                const displayItems = items.slice(0, ITEMS_PER_PAGE);
-                displayItems.forEach(item => {
-                    let stockClass = 'stock-high';
-                    if (item.qtd <= LOW_STOCK_THRESHOLD) stockClass = 'stock-low';
-                    else if (item.qtd <= 30) stockClass = 'stock-medium';
-
-                    html += `
-                        <tr>
-                            <td><span class="sku-code">${item.sku}</span></td>
-                            <td><strong>${item.nome}</strong></td>
-                            <td><span class="stock-badge ${stockClass}">${item.qtd}</span></td>
-                            <td>
-                                <div class="btn-group btn-group-sm" role="group">
-                                    <button class="btn btn-primary" onclick="openAddStockModal('${item.nome.replace(/'/g, "\\'")}', ${item.qtd})">
-                                        <i class="fas fa-plus"></i> Adicionar
-                                    </button>
-                                    <button class="btn btn-danger" onclick="deleteItem('${item.nome.replace(/'/g, "\\'")}')">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                    `;
-                });
-
-                html += `
-                                </tbody>
-                            </table>
-                `;
-
-                if (items.length > ITEMS_PER_PAGE) {
-                    const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
-                    html += `
-                        <div class="pagination-container">
-                            <div class="pagination-info">
-                                Mostrando ${Math.min(ITEMS_PER_PAGE, items.length)} de ${items.length} itens
-                            </div>
-                            <div class="pagination-buttons">
-                                ${Array.from({length: totalPages}, (_, i) => `
-                                    <button class="btn-page ${i === 0 ? 'active' : ''}" 
-                                            onclick="changeCategoryPage('${category}', ${i + 1})"
-                                            data-category="${category}" data-page="${i + 1}">
-                                        ${i + 1}
-                                    </button>
-                                `).join('')}
-                            </div>
-                        </div>
-                    `;
-                }
-
-                html += `
-                        </div>
-                    </div>
-                `;
-            });
-
-            return html;
-        }
-
-        function changeCategoryPage(category, page) {
-            const items = allInventoryData[category].sort((a, b) => a.nome.localeCompare(b.nome));
-            const start = (page - 1) * ITEMS_PER_PAGE;
-            const end = start + ITEMS_PER_PAGE;
-            const displayItems = items.slice(start, end);
-
-            const tbody = document.querySelector(`.category-items[data-category="${category}"]`);
-            tbody.innerHTML = '';
-
-            displayItems.forEach(item => {
-                let stockClass = 'stock-high';
-                if (item.qtd <= LOW_STOCK_THRESHOLD) stockClass = 'stock-low';
-                else if (item.qtd <= 30) stockClass = 'stock-medium';
-
-                tbody.innerHTML += `
-                    <tr>
-                        <td><span class="sku-code">${item.sku}</span></td>
-                        <td><strong>${item.nome}</strong></td>
-                        <td><span class="stock-badge ${stockClass}">${item.qtd}</span></td>
-                        <td>
-                            <div class="btn-group btn-group-sm" role="group">
-                                <button class="btn btn-primary" onclick="openAddStockModal('${item.nome.replace(/'/g, "\\'")}', ${item.qtd})">
-                                    <i class="fas fa-plus"></i> Adicionar
-                                </button>
-                                <button class="btn btn-danger" onclick="deleteItem('${item.nome.replace(/'/g, "\\'")}')">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            });
-
-            document.querySelectorAll(`.btn-page[data-category="${category}"]`).forEach(btn => {
-                btn.classList.toggle('active', parseInt(btn.dataset.page) === page);
-            });
-
+        if (items.length > ITEMS_PER_PAGE) {
             const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
-            const paginationInfo = tbody.closest('.table-container').querySelector('.pagination-info');
-            const showing = Math.min(end, items.length);
-            paginationInfo.textContent = `Mostrando ${start + 1}-${showing} de ${items.length} itens`;
-        }
-
-        function buildOrdersHtml(data) {
-            if (!Array.isArray(data) || data.length === 0) {
-                return `
-                    <div class="empty-state">
-                        <i class="fas fa-clipboard-list"></i>
-                        <h5>Nenhum pedido encontrado</h5>
-                        <p>Os pedidos aparecerão aqui quando forem criados</p>
-                    </div>
-                `;
-            }
-
-            const totalPages = Math.ceil(data.length / ITEMS_PER_PAGE);
-            const start = (currentOrdersPage - 1) * ITEMS_PER_PAGE;
-            const end = start + ITEMS_PER_PAGE;
-            const pageData = data.slice(start, end);
-
-            let html = `
-                <div class="table-container">
-                    <table class="table table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th style="width: 130px;">ID Pedido</th>
-                                <th>Data</th>
-                                <th>Solicitante</th>
-                                <th>ID Func.</th>
-                                <th>Item (Qtd)</th>
-                                <th style="width: 140px;">Prioridade</th>
-                                <th style="width: 180px;">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-            `;
-
-            pageData.forEach(order => {
-                const orderDate = new Date(order.timestamp).toLocaleDateString('pt-BR');
-                
-                let statusClass = {
-                    'Recebido': 'status-recebido',
-                    'Em separação': 'status-em-separacao',
-                    'Concluído': 'status-concluido'
-                }[order.status] || '';
-
-                let priorityClass = {
-                    'Urgente': 'priority-urgente',
-                    'Alta': 'priority-alta',
-                    'Normal': 'priority-normal'
-                }[order.nivelNecessidade] || 'priority-normal';
-
-                let priorityIcon = {
-                    'Urgente': '🔴',
-                    'Alta': '🟡',
-                    'Normal': '🟢'
-                }[order.nivelNecessidade] || '🟢';
-
-                html += `
-                    <tr>
-                        <td><span class="sku-code">${order.pedidoId}</span></td>
-                        <td>${orderDate}</td>
-                        <td>
-                            <strong>${order.solicitante}</strong><br>
-                            <small style="color: #64748b;">${order.setor}</small>
-                        </td>
-                        <td>${order.idFuncional || 'N/A'}</td>
-                        <td>
-                            <strong>${order.item}</strong><br>
-                            <small style="color: #64748b;">Qtd: ${order.qtd}</small>
-                        </td>
-                        <td>
-                            <span class="priority-badge ${priorityClass}">
-                                ${priorityIcon} ${order.nivelNecessidade || 'Normal'}
-                            </span>
-                        </td>
-                        <td>
-                            <select class="form-select form-select-sm status-select ${statusClass}" onchange="updateStatus(this, '${order.pedidoId}')">
-                                <option value="Recebido" ${order.status === 'Recebido' ? 'selected' : ''}>Recebido</option>
-                                <option value="Em separação" ${order.status === 'Em separação' ? 'selected' : ''}>Em separação</option>
-                                <option value="Concluído" ${order.status === 'Concluído' ? 'selected' : ''}>Concluído</option>
-                            </select>
-                        </td>
-                    </tr>
-                `;
-            });
-
             html += `
-                        </tbody>
-                    </table>
-            `;
-
-            if (totalPages > 1) {
-                html += `
-                    <div class="pagination-container">
-                        <div class="pagination-info">
-                            Mostrando ${start + 1}-${Math.min(end, data.length)} de ${data.length} pedidos
-                        </div>
-                        <div class="pagination-buttons">
-                            <button class="btn-page" onclick="changeOrdersPage(${currentOrdersPage - 1})" 
-                                    ${currentOrdersPage === 1 ? 'disabled' : ''}>
-                                <i class="fas fa-chevron-left"></i>
-                            </button>
-                            ${Array.from({length: Math.min(totalPages, 5)}, (_, i) => {
-                                let page;
-                                if (totalPages <= 5) {
-                                    page = i + 1;
-                                } else if (currentOrdersPage <= 3) {
-                                    page = i + 1;
-                                } else if (currentOrdersPage >= totalPages - 2) {
-                                    page = totalPages - 4 + i;
-                                } else {
-                                    page = currentOrdersPage - 2 + i;
-                                }
-                                return `
-                                    <button class="btn-page ${page === currentOrdersPage ? 'active' : ''}" 
-                                            onclick="changeOrdersPage(${page})">
-                                        ${page}
-                                    </button>
-                                `;
-                            }).join('')}
-                            ${totalPages > 5 ? `<span class="pagination-ellipsis">...</span>` : ''}
-                            <button class="btn-page" onclick="changeOrdersPage(${currentOrdersPage + 1})" 
-                                    ${currentOrdersPage === totalPages ? 'disabled' : ''}>
-                                <i class="fas fa-chevron-right"></i>
-                            </button>
-                        </div>
+                <div class="pagination-container">
+                    <div class="pagination-info">
+                        Mostrando ${Math.min(ITEMS_PER_PAGE, items.length)} de ${items.length} itens
                     </div>
-                `;
-            }
-
-            html += `</div>`;
-            return html;
-        }
-
-        function changeOrdersPage(page) {
-            const totalPages = Math.ceil(allOrdersData.length / ITEMS_PER_PAGE);
-            if (page < 1 || page > totalPages) return;
-            
-            currentOrdersPage = page;
-            document.getElementById('orders-display').innerHTML = buildOrdersHtml(allOrdersData);
-        }
-
-        function buildPurchasesHtml(data) {
-            if (!Array.isArray(data) || data.length === 0) {
-                return `
-                    <div class="empty-state">
-                        <i class="fas fa-shopping-cart"></i>
-                        <h5>Nenhuma compra registrada</h5>
-                        <p>Registre suas primeiras compras para começar o histórico</p>
+                    <div class="pagination-buttons">
+                        ${Array.from({length: totalPages}, (_, i) => `
+                            <button class="btn-page ${i === 0 ? 'active' : ''}" 
+                                    onclick="changeCategoryPage('${category}', ${i + 1})"
+                                    data-category="${category}" data-page="${i + 1}">
+                                ${i + 1}
+                            </button>
+                        `).join('')}
                     </div>
-                `;
-            }
-
-            let html = `
-                <div class="table-container">
-                    <table class="table table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>Data da Compra</th>
-                                <th>Nota Fiscal</th>
-                                <th>Fornecedor</th>
-                                <th>Itens</th>
-                                <th>Valor Total</th>
-                                <th>Responsável</th>
-                                <th style="width: 180px;">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-            `;
-
-            data.forEach((purchase, index) => {
-                let dataExibicao = purchase.data;
-                if (purchase.dataCompra) {
-                    dataExibicao = purchase.dataCompra;
-                }
-                const purchaseDate = new Date(dataExibicao).toLocaleDateString('pt-BR');
-                
-                let itens = [];
-                try {
-                    itens = JSON.parse(purchase.itens);
-                } catch(e) {
-                    itens = [];
-                }
-
-                const itensHtml = itens.map(item => `${item.nome} (${item.qtd})`).join('<br>');
-                const valorFormatado = formatCurrency(purchase.valorTotal);
-
-                html += `
-                    <tr>
-                        <td>${purchaseDate}</td>
-                        <td><span class="sku-code">${purchase.notaFiscal}</span></td>
-                        <td><strong>${purchase.fornecedor}</strong></td>
-                        <td style="font-size: 0.85rem;">${itensHtml}</td>
-                        <td><strong style="color: var(--success);">${valorFormatado}</strong></td>
-                        <td>${purchase.responsavel}</td>
-                        <td>
-                            <div class="btn-group btn-group-sm" role="group">
-                                <button class="btn btn-info" onclick="exportPurchaseTXT(${index})" title="Exportar TXT">
-                                    <i class="fas fa-file-alt"></i>
-                                </button>
-                                <button class="btn btn-primary" onclick="exportPurchasePDF(${index})" title="Gerar PDF">
-                                    <i class="fas fa-file-pdf"></i>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            });
-
-            html += `
-                        </tbody>
-                    </table>
                 </div>
             `;
-
-            return html;
         }
 
-        function exportPurchaseTXT(index) {
-            const purchase = window.purchasesData[index];
-            
-            let dataExibicao = purchase.dataCompra || purchase.data;
-            const purchaseDate = new Date(dataExibicao).toLocaleString('pt-BR');
-            
-            let itens = [];
-            try {
-                itens = JSON.parse(purchase.itens);
-            } catch(e) {
-                itens = [];
-            }
+        html += `
+                </div>
+            </div>
+        `;
+    });
 
-            let txtContent = `========================================
+    return html;
+}
+
+function changeCategoryPage(category, page) {
+    const items = allInventoryData[category].sort((a, b) => a.nome.localeCompare(b.nome));
+    const start = (page - 1) * ITEMS_PER_PAGE;
+    const end = start + ITEMS_PER_PAGE;
+    const displayItems = items.slice(start, end);
+
+    const tbody = document.querySelector(`.category-items[data-category="${category}"]`);
+    tbody.innerHTML = '';
+
+    displayItems.forEach(item => {
+        let stockClass = 'stock-high';
+        if (item.qtd <= LOW_STOCK_THRESHOLD) stockClass = 'stock-low';
+        else if (item.qtd <= 30) stockClass = 'stock-medium';
+
+        tbody.innerHTML += `
+            <tr>
+                <td><span class="sku-code">${item.sku}</span></td>
+                <td><strong>${item.nome}</strong></td>
+                <td><span class="stock-badge ${stockClass}">${item.qtd}</span></td>
+                <td>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button class="btn btn-primary" onclick="openAddStockModal('${item.nome.replace(/'/g, "\\'")}', ${item.qtd})">
+                            <i class="fas fa-plus"></i> Adicionar
+                        </button>
+                        <button class="btn btn-danger" onclick="deleteItem('${item.nome.replace(/'/g, "\\'")}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+
+    document.querySelectorAll(`.btn-page[data-category="${category}"]`).forEach(btn => {
+        btn.classList.toggle('active', parseInt(btn.dataset.page) === page);
+    });
+
+    const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
+    const paginationInfo = tbody.closest('.table-container').querySelector('.pagination-info');
+    const showing = Math.min(end, items.length);
+    paginationInfo.textContent = `Mostrando ${start + 1}-${showing} de ${items.length} itens`;
+}
+
+function buildOrdersHtml(data) {
+    if (!Array.isArray(data) || data.length === 0) {
+        return `
+            <div class="empty-state">
+                <i class="fas fa-clipboard-list"></i>
+                <h5>Nenhum pedido encontrado</h5>
+                <p>Os pedidos aparecerão aqui quando forem criados</p>
+            </div>
+        `;
+    }
+
+    const totalPages = Math.ceil(data.length / ITEMS_PER_PAGE);
+    const start = (currentOrdersPage - 1) * ITEMS_PER_PAGE;
+    const end = start + ITEMS_PER_PAGE;
+    const pageData = data.slice(start, end);
+
+    let html = `
+        <div class="table-container">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 130px;">ID Pedido</th>
+                        <th>Data</th>
+                        <th>Solicitante</th>
+                        <th>ID Func.</th>
+                        <th>Item (Qtd)</th>
+                        <th style="width: 140px;">Prioridade</th>
+                        <th style="width: 180px;">Status</th>
+                        <th style="width: 80px;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    pageData.forEach(order => {
+        const orderDate = new Date(order.timestamp).toLocaleDateString('pt-BR');
+        
+        let statusClass = {
+            'Recebido': 'status-recebido',
+            'Em separação': 'status-em-separacao',
+            'Concluído': 'status-concluido',
+            'Cancelado': 'status-cancelado'
+        }[order.status] || '';
+
+        let priorityClass = {
+            'Urgente': 'priority-urgente',
+            'Alta': 'priority-alta',
+            'Normal': 'priority-normal'
+        }[order.nivelNecessidade] || 'priority-normal';
+
+        let priorityIcon = {
+            'Urgente': '🔴',
+            'Alta': '🟡',
+            'Normal': '🟢'
+        }[order.nivelNecessidade] || '🟢';
+
+        html += `
+            <tr>
+                <td><span class="sku-code">${order.pedidoId}</span></td>
+                <td>${orderDate}</td>
+                <td>
+                    <strong>${order.solicitante}</strong><br>
+                    <small style="color: #64748b;">${order.setor}</small>
+                </td>
+                <td>${order.idFuncional || 'N/A'}</td>
+                <td>
+                    <strong>${order.item}</strong><br>
+                    <small style="color: #64748b;">Qtd: ${order.qtd}</small>
+                </td>
+                <td>
+                    <span class="priority-badge ${priorityClass}">
+                        ${priorityIcon} ${order.nivelNecessidade || 'Normal'}
+                    </span>
+                </td>
+                <td>
+                    <select class="form-select form-select-sm status-select ${statusClass}" onchange="updateStatus(this, '${order.pedidoId}')">
+                        <option value="Recebido" ${order.status === 'Recebido' ? 'selected' : ''}>Recebido</option>
+                        <option value="Em separação" ${order.status === 'Em separação' ? 'selected' : ''}>Em separação</option>
+                        <option value="Concluído" ${order.status === 'Concluído' ? 'selected' : ''}>Concluído</option>
+                        <option value="Cancelado" ${order.status === 'Cancelado' ? 'selected' : ''}>Cancelado</option>
+                    </select>
+                </td>
+                <td>
+                    <button class="btn btn-danger btn-sm" onclick="deleteOrder('${order.pedidoId}')" title="Excluir pedido">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += `
+                </tbody>
+            </table>
+    `;
+
+    if (totalPages > 1) {
+        html += `
+            <div class="pagination-container">
+                <div class="pagination-info">
+                    Mostrando ${start + 1}-${Math.min(end, data.length)} de ${data.length} pedidos
+                </div>
+                <div class="pagination-buttons">
+                    <button class="btn-page" onclick="changeOrdersPage(${currentOrdersPage - 1})" 
+                            ${currentOrdersPage === 1 ? 'disabled' : ''}>
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    ${Array.from({length: Math.min(totalPages, 5)}, (_, i) => {
+                        let page;
+                        if (totalPages <= 5) {
+                            page = i + 1;
+                        } else if (currentOrdersPage <= 3) {
+                            page = i + 1;
+                        } else if (currentOrdersPage >= totalPages - 2) {
+                            page = totalPages - 4 + i;
+                        } else {
+                            page = currentOrdersPage - 2 + i;
+                        }
+                        return `
+                            <button class="btn-page ${page === currentOrdersPage ? 'active' : ''}" 
+                                    onclick="changeOrdersPage(${page})">
+                                ${page}
+                            </button>
+                        `;
+                    }).join('')}
+                    ${totalPages > 5 ? `<span class="pagination-ellipsis">...</span>` : ''}
+                    <button class="btn-page" onclick="changeOrdersPage(${currentOrdersPage + 1})" 
+                            ${currentOrdersPage === totalPages ? 'disabled' : ''}>
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    html += `</div>`;
+    return html;
+}
+
+function changeOrdersPage(page) {
+    const totalPages = Math.ceil(allOrdersData.length / ITEMS_PER_PAGE);
+    if (page < 1 || page > totalPages) return;
+    
+    currentOrdersPage = page;
+    document.getElementById('orders-display').innerHTML = buildOrdersHtml(allOrdersData);
+}
+
+async function deleteOrder(pedidoId) {
+    if (!confirm(`Tem certeza que deseja excluir o pedido ${pedidoId}?`)) return;
+    
+    try {
+        await apiCall(null, { action: 'deleteOrder', pedidoId }, false);
+        clearCache();
+        await fetchOrders();
+    } catch (error) {
+        alert(`Erro: ${error.message}`);
+    }
+}
+
+function buildPurchasesHtml(data) {
+    if (!Array.isArray(data) || data.length === 0) {
+        return `
+            <div class="empty-state">
+                <i class="fas fa-shopping-cart"></i>
+                <h5>Nenhuma compra registrada</h5>
+                <p>Registre suas primeiras compras para começar o histórico</p>
+            </div>
+        `;
+    }
+
+    let html = `
+        <div class="table-container">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Data da Compra</th>
+                        <th>Nota Fiscal</th>
+                        <th>Fornecedor</th>
+                        <th>Itens</th>
+                        <th>Valor Total</th>
+                        <th>Responsável</th>
+                        <th style="width: 180px;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    data.forEach((purchase, index) => {
+        let dataExibicao = purchase.data;
+        if (purchase.dataCompra) {
+            dataExibicao = purchase.dataCompra;
+        }
+        const purchaseDate = new Date(dataExibicao).toLocaleDateString('pt-BR');
+        
+        let itens = [];
+        try {
+            itens = JSON.parse(purchase.itens);
+        } catch(e) {
+            itens = [];
+        }
+
+        const itensHtml = itens.map(item => `${item.nome} (${item.qtd})`).join('<br>');
+        const valorFormatado = formatCurrency(purchase.valorTotal);
+
+        html += `
+            <tr>
+                <td>${purchaseDate}</td>
+                <td><span class="sku-code">${purchase.notaFiscal}</span></td>
+                <td><strong>${purchase.fornecedor}</strong></td>
+                <td style="font-size: 0.85rem;">${itensHtml}</td>
+                <td><strong style="color: var(--success);">${valorFormatado}</strong></td>
+                <td>${purchase.responsavel}</td>
+                <td>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button class="btn btn-info" onclick="exportPurchaseTXT(${index})" title="Exportar TXT">
+                            <i class="fas fa-file-alt"></i>
+                        </button>
+                        <button class="btn btn-primary" onclick="exportPurchasePDF(${index})" title="Gerar PDF">
+                            <i class="fas fa-file-pdf"></i>
+                        </button>
+                        <button class="btn btn-danger" onclick="deletePurchase('${purchase.notaFiscal}')" title="Excluir compra">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    return html;
+}
+
+async function deletePurchase(notaFiscal) {
+    if (!confirm(`Tem certeza que deseja excluir a compra ${notaFiscal}?`)) return;
+    
+    try {
+        await apiCall(null, { action: 'deletePurchase', notaFiscal }, false);
+        clearCache();
+        await fetchPurchases();
+    } catch (error) {
+        alert(`Erro: ${error.message}`);
+    }
+}
+// Continuação do script do painel administrativo
+
+function exportPurchaseTXT(index) {
+    const purchase = window.purchasesData[index];
+    
+    let dataExibicao = purchase.dataCompra || purchase.data;
+    const purchaseDate = new Date(dataExibicao).toLocaleString('pt-BR');
+    
+    let itens = [];
+    try {
+        itens = JSON.parse(purchase.itens);
+    } catch(e) {
+        itens = [];
+    }
+
+    let txtContent = `========================================
 REGISTRO DE COMPRA - ALMOXARIFADO SEDEICS
 ========================================
 
@@ -1920,18 +2093,18 @@ ITENS COMPRADOS
 
 `;
 
-            itens.forEach((item, i) => {
-                const subtotal = item.qtd * item.preco;
-                txtContent += `${i + 1}. ${item.nome}
+    itens.forEach((item, i) => {
+        const subtotal = item.qtd * item.preco;
+        txtContent += `${i + 1}. ${item.nome}
    Quantidade: ${item.qtd}
    Valor Unitário: R$ ${formatNumber(item.preco)}
    Subtotal: R$ ${formatNumber(subtotal)}
 
 `;
-            });
+    });
 
-            const valorTotal = parseFloat(purchase.valorTotal);
-            txtContent += `----------------------------------------
+    const valorTotal = parseFloat(purchase.valorTotal);
+    txtContent += `----------------------------------------
 VALOR TOTAL: R$ ${formatNumber(valorTotal)}
 ========================================
 
@@ -1939,619 +2112,620 @@ Documento gerado automaticamente pelo
 Sistema de Gestão de Almoxarifado - SEDEICS
 `;
 
-            const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `Compra_${purchase.notaFiscal}_${new Date().toISOString().split('T')[0]}.txt`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
+    const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Compra_${purchase.notaFiscal}_${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+function exportPurchasePDF(index) {
+    const purchase = window.purchasesData[index];
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    let dataExibicao = purchase.dataCompra || purchase.data;
+    const purchaseDate = new Date(dataExibicao).toLocaleDateString('pt-BR');
+    
+    let itens = [];
+    try {
+        itens = JSON.parse(purchase.itens);
+    } catch(e) {
+        itens = [];
+    }
+
+    doc.setFillColor(30, 58, 138);
+    doc.rect(0, 0, 210, 40, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(20);
+    doc.setFont(undefined, 'bold');
+    doc.text('REGISTRO INTERNO DE COMPRA', 105, 15, { align: 'center' });
+    
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'normal');
+    doc.text('ALMOXARIFADO - SEDEICS', 105, 25, { align: 'center' });
+    
+    doc.setFontSize(9);
+    doc.text('Secretaria de Desenvolvimento Econômico, Indústria, Comércio e Serviços', 105, 32, { align: 'center' });
+
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(10);
+    let yPos = 50;
+
+    doc.setFont(undefined, 'bold');
+    doc.text('INFORMAÇÕES DA COMPRA', 20, yPos);
+    yPos += 8;
+
+    doc.setFont(undefined, 'normal');
+    doc.text(`Data da Compra (NF): ${purchaseDate}`, 20, yPos);
+    yPos += 6;
+    doc.text(`Nota Fiscal: ${purchase.notaFiscal}`, 20, yPos);
+    yPos += 6;
+    doc.text(`Fornecedor: ${purchase.fornecedor}`, 20, yPos);
+    yPos += 6;
+    doc.text(`Responsável: ${purchase.responsavel}`, 20, yPos);
+    yPos += 12;
+
+    doc.setFont(undefined, 'bold');
+    doc.text('ITENS COMPRADOS', 20, yPos);
+    yPos += 8;
+    
+    doc.setFont(undefined, 'bold');
+    doc.setFontSize(9);
+    doc.text('Item', 20, yPos);
+    doc.text('Qtd', 130, yPos);
+    doc.text('Valor Unit.', 150, yPos);
+    doc.text('Subtotal', 175, yPos);
+    yPos += 8;
+
+    doc.setFont(undefined, 'normal');
+    itens.forEach((item, i) => {
+        if (yPos > 270) {
+            doc.addPage();
+            yPos = 20;
         }
 
-        function exportPurchasePDF(index) {
-            const purchase = window.purchasesData[index];
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
+        const subtotal = item.qtd * item.preco;
+        
+        doc.text(`${i + 1}. ${item.nome}`, 20, yPos);
+        doc.text(item.qtd.toString(), 130, yPos);
+        doc.text(`R$ ${formatNumber(item.preco)}`, 150, yPos);
+        doc.text(`R$ ${formatNumber(subtotal)}`, 175, yPos);
+        yPos += 6;
+    });
 
-            let dataExibicao = purchase.dataCompra || purchase.data;
-            const purchaseDate = new Date(dataExibicao).toLocaleDateString('pt-BR');
-            
-            let itens = [];
-            try {
-                itens = JSON.parse(purchase.itens);
-            } catch(e) {
-                itens = [];
-            }
+    yPos += 5;
+    doc.setLineWidth(0.5);
+    doc.line(15, yPos, 195, yPos);
+    yPos += 8;
 
-            doc.setFillColor(30, 58, 138);
-            doc.rect(0, 0, 210, 40, 'F');
+    const valorTotal = parseFloat(purchase.valorTotal);
+    doc.setFont(undefined, 'bold');
+    doc.setFontSize(12);
+    doc.text(`VALOR TOTAL: R$ ${formatNumber(valorTotal)}`, 20, yPos);
 
-            doc.setTextColor(255, 255, 255);
-            doc.setFontSize(20);
-            doc.setFont(undefined, 'bold');
-            doc.text('REGISTRO INTERNO DE COMPRA', 105, 15, { align: 'center' });
-            
-            doc.setFontSize(12);
-            doc.setFont(undefined, 'normal');
-            doc.text('ALMOXARIFADO - SEDEICS', 105, 25, { align: 'center' });
-            
-            doc.setFontSize(9);
-            doc.text('Secretaria de Desenvolvimento Econômico, Indústria, Comércio e Serviços', 105, 32, { align: 'center' });
+    yPos += 15;
+    doc.setFontSize(8);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text('Este documento é um registro interno para controle do almoxarifado.', 105, yPos, { align: 'center' });
+    yPos += 4;
+    doc.text('NÃO substitui a nota fiscal oficial.', 105, yPos, { align: 'center' });
 
-            doc.setTextColor(0, 0, 0);
-            doc.setFontSize(10);
-            let yPos = 50;
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(150, 150, 150);
+        doc.text(`Página ${i} de ${pageCount}`, 105, 290, { align: 'center' });
+        doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 105, 294, { align: 'center' });
+    }
 
-            doc.setFont(undefined, 'bold');
-            doc.text('INFORMAÇÕES DA COMPRA', 20, yPos);
-            yPos += 8;
+    doc.save(`Compra_${purchase.notaFiscal}_${new Date().toISOString().split('T')[0]}.pdf`);
+}
 
-            doc.setFont(undefined, 'normal');
-            doc.text(`Data da Compra (NF): ${purchaseDate}`, 20, yPos);
-            yPos += 6;
-            doc.text(`Nota Fiscal: ${purchase.notaFiscal}`, 20, yPos);
-            yPos += 6;
-            doc.text(`Fornecedor: ${purchase.fornecedor}`, 20, yPos);
-            yPos += 6;
-            doc.text(`Responsável: ${purchase.responsavel}`, 20, yPos);
-            yPos += 12;
-
-            doc.setFont(undefined, 'bold');
-            doc.text('ITENS COMPRADOS', 20, yPos);
-            yPos += 8;
-            
-            doc.setFont(undefined, 'bold');
-            doc.setFontSize(9);
-            doc.text('Item', 20, yPos);
-            doc.text('Qtd', 130, yPos);
-            doc.text('Valor Unit.', 150, yPos);
-            doc.text('Subtotal', 175, yPos);
-            yPos += 8;
-
-            doc.setFont(undefined, 'normal');
-            itens.forEach((item, i) => {
-                if (yPos > 270) {
-                    doc.addPage();
-                    yPos = 20;
-                }
-
-                const subtotal = item.qtd * item.preco;
-                
-                doc.text(`${i + 1}. ${item.nome}`, 20, yPos);
-                doc.text(item.qtd.toString(), 130, yPos);
-                doc.text(`R$ ${formatNumber(item.preco)}`, 150, yPos);
-                doc.text(`R$ ${formatNumber(subtotal)}`, 175, yPos);
-                yPos += 6;
-            });
-
-            yPos += 5;
-            doc.setLineWidth(0.5);
-            doc.line(15, yPos, 195, yPos);
-            yPos += 8;
-
-            const valorTotal = parseFloat(purchase.valorTotal);
-            doc.setFont(undefined, 'bold');
-            doc.setFontSize(12);
-            doc.text(`VALOR TOTAL: R$ ${formatNumber(valorTotal)}`, 20, yPos);
-
-            yPos += 15;
-            doc.setFontSize(8);
-            doc.setFont(undefined, 'normal');
-            doc.setTextColor(100, 116, 139);
-            doc.text('Este documento é um registro interno para controle do almoxarifado.', 105, yPos, { align: 'center' });
-            yPos += 4;
-            doc.text('NÃO substitui a nota fiscal oficial.', 105, yPos, { align: 'center' });
-
-            const pageCount = doc.internal.getNumberOfPages();
-            for (let i = 1; i <= pageCount; i++) {
-                doc.setPage(i);
-                doc.setFontSize(8);
-                doc.setTextColor(150, 150, 150);
-                doc.text(`Página ${i} de ${pageCount}`, 105, 290, { align: 'center' });
-                doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 105, 294, { align: 'center' });
-            }
-
-            doc.save(`Compra_${purchase.notaFiscal}_${new Date().toISOString().split('T')[0]}.pdf`);
+function buildAnalyticsHtml(data) {
+    const renderList = (items, isTop, colorClass = 'primary') => {
+        if (!items || items.length === 0) {
+            return `<li class="list-group-item text-center" style="color: #94a3b8;">Nenhum dado disponível</li>`;
         }
-
-        function buildAnalyticsHtml(data) {
-            const renderList = (items, isTop, colorClass = 'primary') => {
-                if (!items || items.length === 0) {
-                    return `<li class="list-group-item text-center" style="color: #94a3b8;">Nenhum dado disponível</li>`;
-                }
-                
-                return items.map((item, index) => {
-                    const name = isTop ? item.name : item[0];
-                    const count = isTop ? item.count : item[1];
-                    const rank = index + 1;
-                    
-                    return `
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong style="color: #1e3a8a; margin-right: 0.5rem;">#${rank}</strong>
-                                ${name}
-                            </div>
-                            <span class="badge bg-${colorClass}">${count}</span>
-                        </li>
-                    `;
-                }).join('');
-            };
-
-            const renderPaginatedList = (items, currentPage, type, colorClass = 'primary') => {
-                if (!items || items.length === 0) {
-                    return `<li class="list-group-item text-center" style="color: #94a3b8;">Nenhum dado disponível</li>`;
-                }
-
-                const totalPages = Math.ceil(items.length / STOCK_ITEMS_PER_PAGE);
-                const start = (currentPage - 1) * STOCK_ITEMS_PER_PAGE;
-                const end = start + STOCK_ITEMS_PER_PAGE;
-                const pageItems = items.slice(start, end);
-
-                let html = pageItems.map((item, index) => {
-                    const name = item[0];
-                    const count = item[1];
-                    const rank = start + index + 1;
-                    
-                    return `
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong style="color: #1e3a8a; margin-right: 0.5rem;">#${rank}</strong>
-                                ${name}
-                            </div>
-                            <span class="badge bg-${colorClass}">${count}</span>
-                        </li>
-                    `;
-                }).join('');
-
-                if (totalPages > 1) {
-                    html += `
-                        <li class="list-group-item" style="padding: 0.5rem; background: #f8fafc;">
-                            <div class="mini-pagination">
-                                <button class="btn-mini-page" onclick="changeStockPage('${type}', ${currentPage - 1})" 
-                                        ${currentPage === 1 ? 'disabled' : ''}>
-                                    <i class="fas fa-chevron-left"></i>
-                                </button>
-                                <span class="mini-page-info">${currentPage} / ${totalPages}</span>
-                                <button class="btn-mini-page" onclick="changeStockPage('${type}', ${currentPage + 1})" 
-                                        ${currentPage === totalPages ? 'disabled' : ''}>
-                                    <i class="fas fa-chevron-right"></i>
-                                </button>
-                            </div>
-                        </li>
-                    `;
-                }
-
-                return html;
-            };
-
-            window.analyticsData = data;
-
+        
+        return items.map((item, index) => {
+            const name = isTop ? item.name : item[0];
+            const count = isTop ? item.count : item[1];
+            const rank = index + 1;
+            
             return `
-                <div class="kpi-grid">
-                    <div class="kpi-card">
-                        <div class="kpi-header">
-                            <div class="kpi-icon primary">
-                                <i class="fas fa-calendar-day"></i>
-                            </div>
-                        </div>
-                        <div class="kpi-value">${data.ordersTodayCount}</div>
-                        <div class="kpi-label">Pedidos Hoje</div>
-                        <div class="kpi-change positive">
-                            <i class="fas fa-check-circle"></i> Atualizado agora
-                        </div>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong style="color: #1e3a8a; margin-right: 0.5rem;">#${rank}</strong>
+                        ${name}
                     </div>
-                    
-                    <div class="kpi-card">
-                        <div class="kpi-header">
-                            <div class="kpi-icon warning">
-                                <i class="fas fa-clock"></i>
-                            </div>
-                        </div>
-                        <div class="kpi-value">${data.pendingOrdersCount}</div>
-                        <div class="kpi-label">Pedidos Pendentes</div>
-                        <div class="kpi-change ${data.pendingOrdersCount > 0 ? 'negative' : 'positive'}">
-                            <i class="fas fa-${data.pendingOrdersCount > 0 ? 'exclamation' : 'check'}-circle"></i>
-                            ${data.pendingOrdersCount > 0 ? 'Requer atenção' : 'Tudo em dia'}
-                        </div>
-                    </div>
-                    
-                    <div class="kpi-card">
-                        <div class="kpi-header">
-                            <div class="kpi-icon danger">
-                                <i class="fas fa-exclamation-triangle"></i>
-                            </div>
-                        </div>
-                        <div class="kpi-value">${data.lowStockItems.length}</div>
-                        <div class="kpi-label">Estoque Baixo</div>
-                        <div class="kpi-change ${data.lowStockItems.length > 0 ? 'negative' : 'positive'}">
-                            <i class="fas fa-${data.lowStockItems.length > 0 ? 'arrow-down' : 'check'}-circle"></i>
-                            ${data.lowStockItems.length > 0 ? 'Reposição necessária' : 'Níveis normais'}
-                        </div>
-                    </div>
-                    
-                    <div class="kpi-card">
-                        <div class="kpi-header">
-                            <div class="kpi-icon success">
-                                <i class="fas fa-boxes"></i>
-                            </div>
-                        </div>
-                        <div class="kpi-value">${data.highStockItems.length}</div>
-                        <div class="kpi-label">Estoque Alto</div>
-                        <div class="kpi-change positive">
-                            <i class="fas fa-check-circle"></i> Bem abastecido
-                        </div>
-                    </div>
-                </div>
-
-                <hr>
-
-                <div class="month-selector">
-                    <h5>
-                        <i class="fas fa-calendar-alt"></i>
-                        Relatórios Mensais
-                    </h5>
-                    <p style="color: var(--text-secondary); margin-bottom: 1rem;">Selecione um mês para ver o relatório detalhado de pedidos e compras</p>
-                    <div id="monthNavigationContainer">
-                        ${generateMonthButtons()}
-                    </div>
-                </div>
-
-                <div id="monthlyReportContainer"></div>
-
-                <hr>
-
-                <div class="row g-3 mt-2">
-                    <div class="col-lg-4">
-                        <div class="top-items-section">
-                            <h5><i class="fas fa-trophy"></i> Mais Pedidos do Mês</h5>
-                            <ul class="list-group">${renderList(data.mostRequestedMonth, true, 'primary')}</ul>
-                        </div>
-                    </div>
-                    <div class="col-lg-4">
-                        <div class="top-items-section">
-                            <h5><i class="fas fa-fire"></i> Mais Pedidos da Semana</h5>
-                            <ul class="list-group">${renderList(data.mostRequestedWeek, true, 'primary')}</ul>
-                        </div>
-                    </div>
-                    <div class="col-lg-4">
-                        <div class="top-items-section">
-                            <h5><i class="fas fa-star"></i> Mais Pedidos Hoje</h5>
-                            <ul class="list-group">${renderList(data.mostRequestedDay, true, 'primary')}</ul>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row g-3 mt-2">
-                    <div class="col-lg-6">
-                        <div class="top-items-section">
-                            <h5><i class="fas fa-exclamation-circle"></i> Estoque Baixo (≤ ${LOW_STOCK_THRESHOLD})</h5>
-                            <ul class="list-group" id="lowStockList">
-                                ${renderPaginatedList(data.lowStockItems, currentLowStockPage, 'low', 'danger')}
-                            </ul>
-                        </div>
-                    </div>
-                    <div class="col-lg-6">
-                        <div class="top-items-section">
-                            <h5><i class="fas fa-check-circle"></i> Estoque Alto (≥ ${HIGH_STOCK_THRESHOLD})</h5>
-                            <ul class="list-group" id="highStockList">
-                                ${renderPaginatedList(data.highStockItems, currentHighStockPage, 'high', 'success')}
-                            </ul>
-                        </div>
-                    </div>
-                </div>
+                    <span class="badge bg-${colorClass}">${count}</span>
+                </li>
             `;
+        }).join('');
+    };
+
+    const renderPaginatedList = (items, currentPage, type, colorClass = 'primary') => {
+        if (!items || items.length === 0) {
+            return `<li class="list-group-item text-center" style="color: #94a3b8;">Nenhum dado disponível</li>`;
         }
 
-        function changeStockPage(type, page) {
-            if (!window.analyticsData) return;
+        const totalPages = Math.ceil(items.length / STOCK_ITEMS_PER_PAGE);
+        const start = (currentPage - 1) * STOCK_ITEMS_PER_PAGE;
+        const end = start + STOCK_ITEMS_PER_PAGE;
+        const pageItems = items.slice(start, end);
 
-            if (type === 'low') {
-                const totalPages = Math.ceil(window.analyticsData.lowStockItems.length / STOCK_ITEMS_PER_PAGE);
-                if (page < 1 || page > totalPages) return;
-                currentLowStockPage = page;
-
-                const start = (page - 1) * STOCK_ITEMS_PER_PAGE;
-                const end = start + STOCK_ITEMS_PER_PAGE;
-                const pageItems = window.analyticsData.lowStockItems.slice(start, end);
-
-                let html = pageItems.map((item, index) => {
-                    const rank = start + index + 1;
-                    return `
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong style="color: #1e3a8a; margin-right: 0.5rem;">#${rank}</strong>
-                                ${item[0]}
-                            </div>
-                            <span class="badge bg-danger">${item[1]}</span>
-                        </li>
-                    `;
-                }).join('');
-
-                if (totalPages > 1) {
-                    html += `
-                        <li class="list-group-item" style="padding: 0.5rem; background: #f8fafc;">
-                            <div class="mini-pagination">
-                                <button class="btn-mini-page" onclick="changeStockPage('low', ${page - 1})" 
-                                        ${page === 1 ? 'disabled' : ''}>
-                                    <i class="fas fa-chevron-left"></i>
-                                </button>
-                                <span class="mini-page-info">${page} / ${totalPages}</span>
-                                <button class="btn-mini-page" onclick="changeStockPage('low', ${page + 1})" 
-                                        ${page === totalPages ? 'disabled' : ''}>
-                                    <i class="fas fa-chevron-right"></i>
-                                </button>
-                            </div>
-                        </li>
-                    `;
-                }
-
-                document.getElementById('lowStockList').innerHTML = html;
-            } else if (type === 'high') {
-                const totalPages = Math.ceil(window.analyticsData.highStockItems.length / STOCK_ITEMS_PER_PAGE);
-                if (page < 1 || page > totalPages) return;
-                currentHighStockPage = page;
-
-                const start = (page - 1) * STOCK_ITEMS_PER_PAGE;
-                const end = start + STOCK_ITEMS_PER_PAGE;
-                const pageItems = window.analyticsData.highStockItems.slice(start, end);
-
-                let html = pageItems.map((item, index) => {
-                    const rank = start + index + 1;
-                    return `
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong style="color: #1e3a8a; margin-right: 0.5rem;">#${rank}</strong>
-                                ${item[0]}
-                            </div>
-                            <span class="badge bg-success">${item[1]}</span>
-                        </li>
-                    `;
-                }).join('');
-
-                if (totalPages > 1) {
-                    html += `
-                        <li class="list-group-item" style="padding: 0.5rem; background: #f8fafc;">
-                            <div class="mini-pagination">
-                                <button class="btn-mini-page" onclick="changeStockPage('high', ${page - 1})" 
-                                        ${page === 1 ? 'disabled' : ''}>
-                                    <i class="fas fa-chevron-left"></i>
-                                </button>
-                                <span class="mini-page-info">${page} / ${totalPages}</span>
-                                <button class="btn-mini-page" onclick="changeStockPage('high', ${page + 1})" 
-                                        ${page === totalPages ? 'disabled' : ''}>
-                                    <i class="fas fa-chevron-right"></i>
-                                </button>
-                            </div>
-                        </li>
-                    `;
-                }
-
-                document.getElementById('highStockList').innerHTML = html;
-            }
-        }
-
-        function generateMonthButtons() {
-            const months = [
-                'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-                'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-            ];
+        let html = pageItems.map((item, index) => {
+            const name = item[0];
+            const count = item[1];
+            const rank = start + index + 1;
             
-            const now = new Date();
-            const currentMonth = now.getMonth();
-            const currentYear = now.getFullYear();
-            
-            const startDate = new Date(SYSTEM_START_YEAR, SYSTEM_START_MONTH, 1);
-            const monthsSinceStart = (currentYear - SYSTEM_START_YEAR) * 12 + (currentMonth - SYSTEM_START_MONTH) + 1;
-            
-            const totalPages = Math.ceil(monthsSinceStart / MONTHS_PER_PAGE_DISPLAY);
-            const start = (currentMonthsPage - 1) * MONTHS_PER_PAGE_DISPLAY;
-            const end = Math.min(start + MONTHS_PER_PAGE_DISPLAY, monthsSinceStart);
-            
-            let html = '';
-            
-            if (totalPages > 1) {
-                html += `
-                    <div class="month-navigation">
-                        <button class="btn-month-nav" onclick="changeMonthsPage(${currentMonthsPage - 1})" 
-                                ${currentMonthsPage === 1 ? 'disabled' : ''}>
+            return `
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong style="color: #1e3a8a; margin-right: 0.5rem;">#${rank}</strong>
+                        ${name}
+                    </div>
+                    <span class="badge bg-${colorClass}">${count}</span>
+                </li>
+            `;
+        }).join('');
+
+        if (totalPages > 1) {
+            html += `
+                <li class="list-group-item" style="padding: 0.5rem; background: #f8fafc;">
+                    <div class="mini-pagination">
+                        <button class="btn-mini-page" onclick="changeStockPage('${type}', ${currentPage - 1})" 
+                                ${currentPage === 1 ? 'disabled' : ''}>
                             <i class="fas fa-chevron-left"></i>
                         </button>
-                        <span class="month-nav-info">Página ${currentMonthsPage} de ${totalPages}</span>
-                        <button class="btn-month-nav" onclick="changeMonthsPage(${currentMonthsPage + 1})" 
-                                ${currentMonthsPage === totalPages ? 'disabled' : ''}>
+                        <span class="mini-page-info">${currentPage} / ${totalPages}</span>
+                        <button class="btn-mini-page" onclick="changeStockPage('${type}', ${currentPage + 1})" 
+                                ${currentPage === totalPages ? 'disabled' : ''}>
                             <i class="fas fa-chevron-right"></i>
                         </button>
                     </div>
-                `;
-            }
-            
-            html += '<div class="month-buttons">';
-            
-            for (let i = start; i < end; i++) {
-                const monthsFromStart = monthsSinceStart - 1 - i;
-                const targetDate = new Date(currentYear, currentMonth - monthsFromStart, 1);
-                const monthIndex = targetDate.getMonth();
-                const year = targetDate.getFullYear();
-                
-                html += `
-                    <button class="btn-month" onclick="loadMonthlyReport(${monthIndex}, ${year})">
-                        ${months[monthIndex]}<br>
-                        <small style="font-size: 0.8rem; opacity: 0.7;">${year}</small>
-                    </button>
-                `;
-            }
-            
-            html += '</div>';
-            return html;
+                </li>
+            `;
         }
 
-        function changeMonthsPage(page) {
-            const now = new Date();
-            const currentMonth = now.getMonth();
-            const currentYear = now.getFullYear();
-            
-            const startDate = new Date(SYSTEM_START_YEAR, SYSTEM_START_MONTH, 1);
-            const monthsSinceStart = (currentYear - SYSTEM_START_YEAR) * 12 + (currentMonth - SYSTEM_START_MONTH) + 1;
-            
-            const totalPages = Math.ceil(monthsSinceStart / MONTHS_PER_PAGE_DISPLAY);
-            
-            if (page < 1 || page > totalPages) return;
-            
-            currentMonthsPage = page;
-            document.getElementById('monthNavigationContainer').innerHTML = generateMonthButtons();
-        }
+        return html;
+    };
 
-        async function loadMonthlyReport(month, year) {
-            const months = [
-                'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-                'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-            ];
+    window.analyticsData = data;
 
-            document.querySelectorAll('.btn-month').forEach(btn => btn.classList.remove('active'));
-            event.target.closest('.btn-month').classList.add('active');
-
-            const container = document.getElementById('monthlyReportContainer');
-            container.innerHTML = '<div class="text-center py-4"><div class="spinner-border" role="status"></div></div>';
-
-            try {
-                const orders = await apiCall('orders');
-                const purchases = await apiCall('purchases');
-
-                const startDate = new Date(year, month, 1);
-                const endDate = new Date(year, month + 1, 0, 23, 59, 59);
-
-                const monthOrders = orders.filter(order => {
-                    const orderDate = new Date(order.timestamp);
-                    return orderDate >= startDate && orderDate <= endDate;
-                });
-
-                const monthPurchases = purchases.filter(purchase => {
-                    const purchaseDate = new Date(purchase.dataCompra || purchase.data);
-                    return purchaseDate >= startDate && purchaseDate <= endDate;
-                });
-
-                const totalOrders = monthOrders.length;
-                const completedOrders = monthOrders.filter(o => o.status === 'Concluído').length;
-                const totalPurchases = monthPurchases.length;
-                const totalSpent = monthPurchases.reduce((sum, p) => sum + parseFloat(p.valorTotal || 0), 0);
-
-                const itemCounts = {};
-                monthOrders.forEach(order => {
-                    itemCounts[order.item] = (itemCounts[order.item] || 0) + parseInt(order.qtd);
-                });
-                const topItems = Object.entries(itemCounts)
-                    .sort((a, b) => b[1] - a[1])
-                    .slice(0, 5);
-
-                currentMonthReport = { month, year, orders: monthOrders, purchases: monthPurchases };
-
-                container.innerHTML = `
-                    <div class="report-card">
-                        <h6>
-                            <i class="fas fa-chart-line"></i>
-                            Relatório de ${months[month]} ${year}
-                        </h6>
-                        
-                        <div class="report-summary">
-                            <div class="summary-item">
-                                <div class="summary-label">Total de Pedidos</div>
-                                <div class="summary-value">${totalOrders}</div>
-                            </div>
-                            <div class="summary-item">
-                                <div class="summary-label">Pedidos Concluídos</div>
-                                <div class="summary-value">${completedOrders}</div>
-                            </div>
-                            <div class="summary-item">
-                                <div class="summary-label">Total de Compras</div>
-                                <div class="summary-value">${totalPurchases}</div>
-                            </div>
-                            <div class="summary-item">
-                                <div class="summary-label">Valor Gasto</div>
-                                <div class="summary-value" style="font-size: 1.2rem;">${formatCurrency(totalSpent)}</div>
-                            </div>
-                        </div>
-
-                        <div class="report-export-buttons">
-                            <button class="btn btn-info btn-sm" onclick="exportMonthlyReportTXT()">
-                                <i class="fas fa-file-alt"></i> Exportar TXT
-                            </button>
-                            <button class="btn btn-primary btn-sm" onclick="exportMonthlyReportPDF()">
-                                <i class="fas fa-file-pdf"></i> Exportar PDF
-                            </button>
-                        </div>
-
-                        ${topItems.length > 0 ? `
-                            <hr>
-                            <h6><i class="fas fa-star"></i> Itens Mais Solicitados</h6>
-                            <ul class="list-group">
-                                ${topItems.map(([item, count], index) => `
-                                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <strong style="color: #1e3a8a; margin-right: 0.5rem;">#${index + 1}</strong>
-                                            ${item}
-                                        </div>
-                                        <span class="badge bg-primary">${count}</span>
-                                    </li>
-                                `).join('')}
-                            </ul>
-                        ` : ''}
-
-                        ${monthPurchases.length > 0 ? `
-                            <hr>
-                            <h6><i class="fas fa-shopping-cart"></i> Compras Realizadas</h6>
-                            <div class="table-container">
-                                <table class="table table-sm mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th>Data</th>
-                                            <th>Nota Fiscal</th>
-                                            <th>Fornecedor</th>
-                                            <th>Valor</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${monthPurchases.map(p => `
-                                            <tr>
-                                                <td>${new Date(p.dataCompra || p.data).toLocaleDateString('pt-BR')}</td>
-                                                <td><span class="sku-code">${p.notaFiscal}</span></td>
-                                                <td>${p.fornecedor}</td>
-                                                <td><strong style="color: var(--success);">${formatCurrency(p.valorTotal)}</strong></td>
-                                            </tr>
-                                        `).join('')}
-                                    </tbody>
-                                </table>
-                            </div>
-                        ` : ''}
+    return `
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <div class="kpi-icon primary">
+                        <i class="fas fa-calendar-day"></i>
                     </div>
-                `;
-            } catch (error) {
-                container.innerHTML = `
-                    <div class="alert alert-danger">
+                </div>
+                <div class="kpi-value">${data.ordersTodayCount}</div>
+                <div class="kpi-label">Pedidos Hoje</div>
+                <div class="kpi-change positive">
+                    <i class="fas fa-check-circle"></i> Atualizado agora
+                </div>
+            </div>
+            
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <div class="kpi-icon warning">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                </div>
+                <div class="kpi-value">${data.pendingOrdersCount}</div>
+                <div class="kpi-label">Pedidos Pendentes</div>
+                <div class="kpi-change ${data.pendingOrdersCount > 0 ? 'negative' : 'positive'}">
+                    <i class="fas fa-${data.pendingOrdersCount > 0 ? 'exclamation' : 'check'}-circle"></i>
+                    ${data.pendingOrdersCount > 0 ? 'Requer atenção' : 'Tudo em dia'}
+                </div>
+            </div>
+            
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <div class="kpi-icon danger">
                         <i class="fas fa-exclamation-triangle"></i>
-                        Erro ao carregar relatório: ${error.message}
                     </div>
-                `;
-            }
+                </div>
+                <div class="kpi-value">${data.lowStockItems.length}</div>
+                <div class="kpi-label">Estoque Baixo</div>
+                <div class="kpi-change ${data.lowStockItems.length > 0 ? 'negative' : 'positive'}">
+                    <i class="fas fa-${data.lowStockItems.length > 0 ? 'arrow-down' : 'check'}-circle"></i>
+                    ${data.lowStockItems.length > 0 ? 'Reposição necessária' : 'Níveis normais'}
+                </div>
+            </div>
+            
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <div class="kpi-icon success">
+                        <i class="fas fa-boxes"></i>
+                    </div>
+                </div>
+                <div class="kpi-value">${data.highStockItems.length}</div>
+                <div class="kpi-label">Estoque Alto</div>
+                <div class="kpi-change positive">
+                    <i class="fas fa-check-circle"></i> Bem abastecido
+                </div>
+            </div>
+        </div>
+
+        <hr>
+
+        <div class="month-selector">
+            <h5>
+                <i class="fas fa-calendar-alt"></i>
+                Relatórios Mensais
+            </h5>
+            <p style="color: var(--text-secondary); margin-bottom: 1rem;">Selecione um mês para ver o relatório detalhado de pedidos e compras</p>
+            <div id="monthNavigationContainer">
+                ${generateMonthButtons()}
+            </div>
+        </div>
+
+        <div id="monthlyReportContainer"></div>
+
+        <hr>
+
+        <div class="row g-3 mt-2">
+            <div class="col-lg-4">
+                <div class="top-items-section">
+                    <h5><i class="fas fa-trophy"></i> Mais Pedidos do Mês</h5>
+                    <ul class="list-group">${renderList(data.mostRequestedMonth, true, 'primary')}</ul>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="top-items-section">
+                    <h5><i class="fas fa-fire"></i> Mais Pedidos da Semana</h5>
+                    <ul class="list-group">${renderList(data.mostRequestedWeek, true, 'primary')}</ul>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="top-items-section">
+                    <h5><i class="fas fa-star"></i> Mais Pedidos Hoje</h5>
+                    <ul class="list-group">${renderList(data.mostRequestedDay, true, 'primary')}</ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3 mt-2">
+            <div class="col-lg-6">
+                <div class="top-items-section">
+                    <h5><i class="fas fa-exclamation-circle"></i> Estoque Baixo (≤ ${LOW_STOCK_THRESHOLD})</h5>
+                    <ul class="list-group" id="lowStockList">
+                        ${renderPaginatedList(data.lowStockItems, currentLowStockPage, 'low', 'danger')}
+                    </ul>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="top-items-section">
+                    <h5><i class="fas fa-check-circle"></i> Estoque Alto (≥ ${HIGH_STOCK_THRESHOLD})</h5>
+                    <ul class="list-group" id="highStockList">
+                        ${renderPaginatedList(data.highStockItems, currentHighStockPage, 'high', 'success')}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function changeStockPage(type, page) {
+    if (!window.analyticsData) return;
+
+    if (type === 'low') {
+        const totalPages = Math.ceil(window.analyticsData.lowStockItems.length / STOCK_ITEMS_PER_PAGE);
+        if (page < 1 || page > totalPages) return;
+        currentLowStockPage = page;
+
+        const start = (page - 1) * STOCK_ITEMS_PER_PAGE;
+        const end = start + STOCK_ITEMS_PER_PAGE;
+        const pageItems = window.analyticsData.lowStockItems.slice(start, end);
+
+        let html = pageItems.map((item, index) => {
+            const rank = start + index + 1;
+            return `
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong style="color: #1e3a8a; margin-right: 0.5rem;">#${rank}</strong>
+                        ${item[0]}
+                    </div>
+                    <span class="badge bg-danger">${item[1]}</span>
+                </li>
+            `;
+        }).join('');
+
+        if (totalPages > 1) {
+            html += `
+                <li class="list-group-item" style="padding: 0.5rem; background: #f8fafc;">
+                    <div class="mini-pagination">
+                        <button class="btn-mini-page" onclick="changeStockPage('low', ${page - 1})" 
+                                ${page === 1 ? 'disabled' : ''}>
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <span class="mini-page-info">${page} / ${totalPages}</span>
+                        <button class="btn-mini-page" onclick="changeStockPage('low', ${page + 1})" 
+                                ${page === totalPages ? 'disabled' : ''}>
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </li>
+            `;
         }
 
-        function exportMonthlyReportTXT() {
-            if (!currentMonthReport) return;
+        document.getElementById('lowStockList').innerHTML = html;
+    } else if (type === 'high') {
+        const totalPages = Math.ceil(window.analyticsData.highStockItems.length / STOCK_ITEMS_PER_PAGE);
+        if (page < 1 || page > totalPages) return;
+        currentHighStockPage = page;
 
-            const months = [
-                'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-                'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-            ];
+        const start = (page - 1) * STOCK_ITEMS_PER_PAGE;
+        const end = start + STOCK_ITEMS_PER_PAGE;
+        const pageItems = window.analyticsData.highStockItems.slice(start, end);
 
-            const { month, year, orders, purchases } = currentMonthReport;
-            
-            const totalOrders = orders.length;
-            const completedOrders = orders.filter(o => o.status === 'Concluído').length;
-            const totalPurchases = purchases.length;
-            const totalSpent = purchases.reduce((sum, p) => sum + parseFloat(p.valorTotal || 0), 0);
+        let html = pageItems.map((item, index) => {
+            const rank = start + index + 1;
+            return `
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong style="color: #1e3a8a; margin-right: 0.5rem;">#${rank}</strong>
+                        ${item[0]}
+                    </div>
+                    <span class="badge bg-success">${item[1]}</span>
+                </li>
+            `;
+        }).join('');
 
-            let txtContent = `========================================
+        if (totalPages > 1) {
+            html += `
+                <li class="list-group-item" style="padding: 0.5rem; background: #f8fafc;">
+                    <div class="mini-pagination">
+                        <button class="btn-mini-page" onclick="changeStockPage('high', ${page - 1})" 
+                                ${page === 1 ? 'disabled' : ''}>
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <span class="mini-page-info">${page} / ${totalPages}</span>
+                        <button class="btn-mini-page" onclick="changeStockPage('high', ${page + 1})" 
+                                ${page === totalPages ? 'disabled' : ''}>
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </li>
+            `;
+        }
+
+        document.getElementById('highStockList').innerHTML = html;
+    }
+}
+
+function generateMonthButtons() {
+    const months = [
+        'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    ];
+    
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    
+    const startDate = new Date(SYSTEM_START_YEAR, SYSTEM_START_MONTH, 1);
+    const monthsSinceStart = (currentYear - SYSTEM_START_YEAR) * 12 + (currentMonth - SYSTEM_START_MONTH) + 1;
+    
+    const totalPages = Math.ceil(monthsSinceStart / MONTHS_PER_PAGE_DISPLAY);
+    const start = (currentMonthsPage - 1) * MONTHS_PER_PAGE_DISPLAY;
+    const end = Math.min(start + MONTHS_PER_PAGE_DISPLAY, monthsSinceStart);
+    
+    let html = '';
+    
+    if (totalPages > 1) {
+        html += `
+            <div class="month-navigation">
+                <button class="btn-month-nav" onclick="changeMonthsPage(${currentMonthsPage - 1})" 
+                        ${currentMonthsPage === 1 ? 'disabled' : ''}>
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <span class="month-nav-info">Página ${currentMonthsPage} de ${totalPages}</span>
+                <button class="btn-month-nav" onclick="changeMonthsPage(${currentMonthsPage + 1})" 
+                        ${currentMonthsPage === totalPages ? 'disabled' : ''}>
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        `;
+    }
+    
+    html += '<div class="month-buttons">';
+    
+    for (let i = start; i < end; i++) {
+        const monthsFromStart = monthsSinceStart - 1 - i;
+        const targetDate = new Date(currentYear, currentMonth - monthsFromStart, 1);
+        const monthIndex = targetDate.getMonth();
+        const year = targetDate.getFullYear();
+        
+        html += `
+            <button class="btn-month" onclick="loadMonthlyReport(${monthIndex}, ${year})">
+                ${months[monthIndex]}<br>
+                <small style="font-size: 0.8rem; opacity: 0.7;">${year}</small>
+            </button>
+        `;
+    }
+    
+    html += '</div>';
+    return html;
+}
+
+function changeMonthsPage(page) {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    
+    const startDate = new Date(SYSTEM_START_YEAR, SYSTEM_START_MONTH, 1);
+    const monthsSinceStart = (currentYear - SYSTEM_START_YEAR) * 12 + (currentMonth - SYSTEM_START_MONTH) + 1;
+    
+    const totalPages = Math.ceil(monthsSinceStart / MONTHS_PER_PAGE_DISPLAY);
+    
+    if (page < 1 || page > totalPages) return;
+    
+    currentMonthsPage = page;
+    document.getElementById('monthNavigationContainer').innerHTML = generateMonthButtons();
+}
+
+async function loadMonthlyReport(month, year) {
+    const months = [
+        'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    ];
+
+    document.querySelectorAll('.btn-month').forEach(btn => btn.classList.remove('active'));
+    event.target.closest('.btn-month').classList.add('active');
+
+    const container = document.getElementById('monthlyReportContainer');
+    container.innerHTML = '<div class="text-center py-4"><div class="spinner-border" role="status"></div></div>';
+
+    try {
+        const orders = await apiCall('orders', null, true);
+        const purchases = await apiCall('purchases', null, true);
+
+        const startDate = new Date(year, month, 1);
+        const endDate = new Date(year, month + 1, 0, 23, 59, 59);
+
+        const monthOrders = orders.filter(order => {
+            const orderDate = new Date(order.timestamp);
+            return orderDate >= startDate && orderDate <= endDate;
+        });
+
+        const monthPurchases = purchases.filter(purchase => {
+            const purchaseDate = new Date(purchase.dataCompra || purchase.data);
+            return purchaseDate >= startDate && purchaseDate <= endDate;
+        });
+
+        const totalOrders = monthOrders.length;
+        const completedOrders = monthOrders.filter(o => o.status === 'Concluído').length;
+        const totalPurchases = monthPurchases.length;
+        const totalSpent = monthPurchases.reduce((sum, p) => sum + parseFloat(p.valorTotal || 0), 0);
+
+        const itemCounts = {};
+        monthOrders.forEach(order => {
+            itemCounts[order.item] = (itemCounts[order.item] || 0) + parseInt(order.qtd);
+        });
+        const topItems = Object.entries(itemCounts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5);
+
+        currentMonthReport = { month, year, orders: monthOrders, purchases: monthPurchases };
+
+        container.innerHTML = `
+            <div class="report-card">
+                <h6>
+                    <i class="fas fa-chart-line"></i>
+                    Relatório de ${months[month]} ${year}
+                </h6>
+                
+                <div class="report-summary">
+                    <div class="summary-item">
+                        <div class="summary-label">Total de Pedidos</div>
+                        <div class="summary-value">${totalOrders}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Pedidos Concluídos</div>
+                        <div class="summary-value">${completedOrders}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Total de Compras</div>
+                        <div class="summary-value">${totalPurchases}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Valor Gasto</div>
+                        <div class="summary-value" style="font-size: 1.2rem;">${formatCurrency(totalSpent)}</div>
+                    </div>
+                </div>
+
+                <div class="report-export-buttons">
+                    <button class="btn btn-info btn-sm" onclick="exportMonthlyReportTXT()">
+                        <i class="fas fa-file-alt"></i> Exportar TXT
+                    </button>
+                    <button class="btn btn-primary btn-sm" onclick="exportMonthlyReportPDF()">
+                        <i class="fas fa-file-pdf"></i> Exportar PDF
+                    </button>
+                </div>
+
+                ${topItems.length > 0 ? `
+                    <hr>
+                    <h6><i class="fas fa-star"></i> Itens Mais Solicitados</h6>
+                    <ul class="list-group">
+                        ${topItems.map(([item, count], index) => `
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong style="color: #1e3a8a; margin-right: 0.5rem;">#${index + 1}</strong>
+                                    ${item}
+                                </div>
+                                <span class="badge bg-primary">${count}</span>
+                            </li>
+                        `).join('')}
+                    </ul>
+                ` : ''}
+
+                ${monthPurchases.length > 0 ? `
+                    <hr>
+                    <h6><i class="fas fa-shopping-cart"></i> Compras Realizadas</h6>
+                    <div class="table-container">
+                        <table class="table table-sm mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Nota Fiscal</th>
+                                    <th>Fornecedor</th>
+                                    <th>Valor</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${monthPurchases.map(p => `
+                                    <tr>
+                                        <td>${new Date(p.dataCompra || p.data).toLocaleDateString('pt-BR')}</td>
+                                        <td><span class="sku-code">${p.notaFiscal}</span></td>
+                                        <td>${p.fornecedor}</td>
+                                        <td><strong style="color: var(--success);">${formatCurrency(p.valorTotal)}</strong></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    } catch (error) {
+        container.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle"></i>
+                Erro ao carregar relatório: ${error.message}
+            </div>
+        `;
+    }
+}
+// Continuação e finalização do script
+
+function exportMonthlyReportTXT() {
+    if (!currentMonthReport) return;
+
+    const months = [
+        'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    ];
+
+    const { month, year, orders, purchases } = currentMonthReport;
+    
+    const totalOrders = orders.length;
+    const completedOrders = orders.filter(o => o.status === 'Concluído').length;
+    const totalPurchases = purchases.length;
+    const totalSpent = purchases.reduce((sum, p) => sum + parseFloat(p.valorTotal || 0), 0);
+
+    let txtContent = `========================================
 RELATÓRIO MENSAL - ALMOXARIFADO SEDEICS
 ========================================
 
@@ -2569,430 +2743,516 @@ Valor Total Gasto: R$ ${formatNumber(totalSpent)}
 
 `;
 
-            if (orders.length > 0) {
-                txtContent += `----------------------------------------
+    if (orders.length > 0) {
+        txtContent += `----------------------------------------
 PEDIDOS DO PERÍODO
 ----------------------------------------
 
 `;
-                orders.forEach((order, i) => {
-                    txtContent += `${i + 1}. ${order.item}
+        orders.forEach((order, i) => {
+            txtContent += `${i + 1}. ${order.item}
    Solicitante: ${order.solicitante} (${order.setor})
    Quantidade: ${order.qtd}
    Status: ${order.status}
    Data: ${new Date(order.timestamp).toLocaleDateString('pt-BR')}
 
 `;
-                });
-            }
+        });
+    }
 
-            if (purchases.length > 0) {
-                txtContent += `----------------------------------------
+    if (purchases.length > 0) {
+        txtContent += `----------------------------------------
 COMPRAS REALIZADAS
 ----------------------------------------
 
 `;
-                purchases.forEach((purchase, i) => {
-                    txtContent += `${i + 1}. ${purchase.fornecedor}
+        purchases.forEach((purchase, i) => {
+            txtContent += `${i + 1}. ${purchase.fornecedor}
    Nota Fiscal: ${purchase.notaFiscal}
    Data: ${new Date(purchase.dataCompra || purchase.data).toLocaleDateString('pt-BR')}
    Valor: R$ ${formatNumber(purchase.valorTotal)}
    Responsável: ${purchase.responsavel}
 
 `;
-                });
-            }
+        });
+    }
 
-            txtContent += `========================================
+    txtContent += `========================================
 Documento gerado automaticamente pelo
 Sistema de Gestão de Almoxarifado - SEDEICS
 `;
 
-            const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `Relatorio_${months[month]}_${year}.txt`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-        }
+    const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Relatorio_${months[month]}_${year}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
 
-        function exportMonthlyReportPDF() {
-            if (!currentMonthReport) return;
+function exportMonthlyReportPDF() {
+    if (!currentMonthReport) return;
 
-            const months = [
-                'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-                'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-            ];
+    const months = [
+        'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    ];
 
-            const { month, year, orders, purchases } = currentMonthReport;
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
+    const { month, year, orders, purchases } = currentMonthReport;
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
 
-            const totalOrders = orders.length;
-            const completedOrders = orders.filter(o => o.status === 'Concluído').length;
-            const totalPurchases = purchases.length;
-            const totalSpent = purchases.reduce((sum, p) => sum + parseFloat(p.valorTotal || 0), 0);
+    const totalOrders = orders.length;
+    const completedOrders = orders.filter(o => o.status === 'Concluído').length;
+    const totalPurchases = purchases.length;
+    const totalSpent = purchases.reduce((sum, p) => sum + parseFloat(p.valorTotal || 0), 0);
 
-            doc.setFillColor(30, 58, 138);
-            doc.rect(0, 0, 210, 40, 'F');
+    doc.setFillColor(30, 58, 138);
+    doc.rect(0, 0, 210, 40, 'F');
 
-            doc.setTextColor(255, 255, 255);
-            doc.setFontSize(20);
-            doc.setFont(undefined, 'bold');
-            doc.text('RELATÓRIO MENSAL', 105, 15, { align: 'center' });
-            
-            doc.setFontSize(14);
-            doc.setFont(undefined, 'normal');
-            doc.text(`${months[month]} de ${year}`, 105, 25, { align: 'center' });
-            
-            doc.setFontSize(9);
-            doc.text('ALMOXARIFADO - SEDEICS', 105, 32, { align: 'center' });
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(20);
+    doc.setFont(undefined, 'bold');
+    doc.text('RELATÓRIO MENSAL', 105, 15, { align: 'center' });
+    
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'normal');
+    doc.text(`${months[month]} de ${year}`, 105, 25, { align: 'center' });
+    
+    doc.setFontSize(9);
+    doc.text('ALMOXARIFADO - SEDEICS', 105, 32, { align: 'center' });
 
-            doc.setTextColor(0, 0, 0);
-            doc.setFontSize(10);
-            let yPos = 50;
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(10);
+    let yPos = 50;
 
-            doc.setFont(undefined, 'bold');
-            doc.text('RESUMO GERAL', 20, yPos);
-            yPos += 8;
+    doc.setFont(undefined, 'bold');
+    doc.text('RESUMO GERAL', 20, yPos);
+    yPos += 8;
 
-            doc.setFont(undefined, 'normal');
-            doc.text(`Total de Pedidos: ${totalOrders}`, 20, yPos);
+    doc.setFont(undefined, 'normal');
+    doc.text(`Total de Pedidos: ${totalOrders}`, 20, yPos);
+    yPos += 6;
+    doc.text(`Pedidos Concluídos: ${completedOrders}`, 20, yPos);
+    yPos += 6;
+    doc.text(`Total de Compras: ${totalPurchases}`, 20, yPos);
+    yPos += 6;
+    doc.setFont(undefined, 'bold');
+    doc.text(`Valor Total Gasto: R$ ${formatNumber(totalSpent)}`, 20, yPos);
+    yPos += 12;
+
+    if (orders.length > 0) {
+        doc.setFont(undefined, 'bold');
+        doc.text('PEDIDOS DO PERÍODO', 20, yPos);
+        yPos += 8;
+
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(8);
+
+        orders.forEach((order, i) => {
+            if (yPos > 270) {
+                doc.addPage();
+                yPos = 20;
+            }
+
+            doc.text(`${i + 1}. ${order.item} - Qtd: ${order.qtd}`, 20, yPos);
+            yPos += 4;
+            doc.text(`   ${order.solicitante} (${order.setor}) - ${order.status}`, 20, yPos);
             yPos += 6;
-            doc.text(`Pedidos Concluídos: ${completedOrders}`, 20, yPos);
+        });
+
+        yPos += 4;
+    }
+
+    if (purchases.length > 0) {
+        if (yPos > 240) {
+            doc.addPage();
+            yPos = 20;
+        }
+
+        doc.setFontSize(10);
+        doc.setFont(undefined, 'bold');
+        doc.text('COMPRAS REALIZADAS', 20, yPos);
+        yPos += 8;
+
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(8);
+
+        purchases.forEach((purchase, i) => {
+            if (yPos > 270) {
+                doc.addPage();
+                yPos = 20;
+            }
+
+            doc.text(`${i + 1}. ${purchase.fornecedor} - NF: ${purchase.notaFiscal}`, 20, yPos);
+            yPos += 4;
+            doc.text(`   R$ ${formatNumber(purchase.valorTotal)} - ${purchase.responsavel}`, 20, yPos);
             yPos += 6;
-            doc.text(`Total de Compras: ${totalPurchases}`, 20, yPos);
-            yPos += 6;
-            doc.setFont(undefined, 'bold');
-            doc.text(`Valor Total Gasto: R$ ${formatNumber(totalSpent)}`, 20, yPos);
-            yPos += 12;
-
-            if (orders.length > 0) {
-                doc.setFont(undefined, 'bold');
-                doc.text('PEDIDOS DO PERÍODO', 20, yPos);
-                yPos += 8;
-
-                doc.setFont(undefined, 'normal');
-                doc.setFontSize(8);
-
-                orders.forEach((order, i) => {
-                    if (yPos > 270) {
-                        doc.addPage();
-                        yPos = 20;
-                    }
-
-                    doc.text(`${i + 1}. ${order.item} - Qtd: ${order.qtd}`, 20, yPos);
-                    yPos += 4;
-                    doc.text(`   ${order.solicitante} (${order.setor}) - ${order.status}`, 20, yPos);
-                    yPos += 6;
-                });
-
-                yPos += 4;
-            }
-
-            if (purchases.length > 0) {
-                if (yPos > 240) {
-                    doc.addPage();
-                    yPos = 20;
-                }
-
-                doc.setFontSize(10);
-                doc.setFont(undefined, 'bold');
-                doc.text('COMPRAS REALIZADAS', 20, yPos);
-                yPos += 8;
-
-                doc.setFont(undefined, 'normal');
-                doc.setFontSize(8);
-
-                purchases.forEach((purchase, i) => {
-                    if (yPos > 270) {
-                        doc.addPage();
-                        yPos = 20;
-                    }
-
-                    doc.text(`${i + 1}. ${purchase.fornecedor} - NF: ${purchase.notaFiscal}`, 20, yPos);
-                    yPos += 4;
-                    doc.text(`   R$ ${formatNumber(purchase.valorTotal)} - ${purchase.responsavel}`, 20, yPos);
-                    yPos += 6;
-                });
-            }
-
-            const pageCount = doc.internal.getNumberOfPages();
-            for (let i = 1; i <= pageCount; i++) {
-                doc.setPage(i);
-                doc.setFontSize(8);
-                doc.setTextColor(150, 150, 150);
-                doc.text(`Página ${i} de ${pageCount}`, 105, 290, { align: 'center' });
-                doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 105, 294, { align: 'center' });
-            }
-
-            doc.save(`Relatorio_${months[month]}_${year}.pdf`);
-        }
-
-        async function updateStatus(selectElement, pedidoId) {
-            const newStatus = selectElement.value;
-            selectElement.className = 'form-select form-select-sm status-select ';
-            
-            if (newStatus === 'Recebido') selectElement.classList.add('status-recebido');
-            else if (newStatus === 'Em separação') selectElement.classList.add('status-em-separacao');
-            else if (newStatus === 'Concluído') selectElement.classList.add('status-concluido');
-            
-            selectElement.disabled = true;
-            
-            try {
-                await apiCall(null, { action: 'updateOrderStatus', pedidoId, newStatus });
-            } catch (error) {
-                alert(`Erro: ${error.message}`);
-            } finally {
-                selectElement.disabled = false;
-            }
-        }
-
-        let currentItemName = '';
-
-        function openAddStockModal(itemName, currentStock) {
-            currentItemName = itemName;
-            document.getElementById('modalTitle').textContent = `Adicionar Estoque`;
-            document.getElementById('itemName').textContent = itemName;
-            
-            const stockSpan = document.getElementById('currentStock');
-            stockSpan.textContent = currentStock;
-            
-            let stockClass = 'stock-high';
-            if (currentStock <= LOW_STOCK_THRESHOLD) stockClass = 'stock-low';
-            else if (currentStock <= 30) stockClass = 'stock-medium';
-            stockSpan.className = `stock-badge ${stockClass}`;
-            
-            document.getElementById('quantityToAdd').value = '';
-            addStockModal.show();
-        }
-
-        async function deleteItem(itemName) {
-            if (!confirm(`Tem certeza que deseja excluir "${itemName}"?`)) return;
-            
-            try {
-                await apiCall(null, { action: 'deleteItem', itemName });
-                await fetchInventory();
-            } catch (error) {
-                alert(`Erro: ${error.message}`);
-            }
-        }
-
-        document.getElementById('saveStockButton').addEventListener('click', async (e) => {
-            const btn = e.target;
-            const quantityToAdd = parseInt(document.getElementById('quantityToAdd').value);
-            
-            if (!quantityToAdd || quantityToAdd <= 0) {
-                alert('Quantidade inválida.');
-                return;
-            }
-            
-            btn.disabled = true;
-            btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
-            
-            try {
-                await apiCall(null, { action: 'addStock', itemName: currentItemName, quantityToAdd });
-                addStockModal.hide();
-                await fetchInventory();
-            } catch (error) {
-                alert(`Erro: ${error.message}`);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-save"></i> Salvar';
-            }
         });
+    }
 
-        document.getElementById('saveNewItemButton').addEventListener('click', async (e) => {
-            const btn = e.target;
-            const newItemName = document.getElementById('newItemName').value.trim();
-            const initialQuantity = parseInt(document.getElementById('initialQuantity').value);
-            const category = document.getElementById('itemCategory').value;
-            
-            if (!newItemName || !category || initialQuantity < 0) {
-                alert('Preencha todos os campos corretamente.');
-                return;
-            }
-            
-            btn.disabled = true;
-            btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
-            
-            try {
-                await apiCall(null, { action: 'addNewItem', itemName: newItemName, initialQuantity, category });
-                addNewItemModal.hide();
-                await fetchInventory();
-            } catch (error) {
-                alert(`Erro: ${error.message}`);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-save"></i> Salvar Material';
-            }
-        });
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(150, 150, 150);
+        doc.text(`Página ${i} de ${pageCount}`, 105, 290, { align: 'center' });
+        doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 105, 294, { align: 'center' });
+    }
 
-        let purchaseItemCounter = 0;
+    doc.save(`Relatorio_${months[month]}_${year}.pdf`);
+}
 
-        function addPurchaseItemRow() {
-            purchaseItemCounter++;
-            const container = document.getElementById('purchase-items-container');
-            const row = document.createElement('div');
-            row.classList.add('purchase-item-row');
-            row.innerHTML = `
-                <div class="row g-2 align-items-center">
-                    <div class="col-md-5">
-                        <input type="text" class="form-control form-control-sm purchase-item-name" placeholder="Nome do material" required>
-                    </div>
-                    <div class="col-md-2">
-                        <input type="number" class="form-control form-control-sm purchase-item-qty" placeholder="Qtd" min="1" required>
-                    </div>
-                    <div class="col-md-4">
-                        <input type="number" class="form-control form-control-sm purchase-item-price" placeholder="Valor unitário (R$)" min="0" step="0.01" required>
-                    </div>
-                    <div class="col-md-1">
-                        <button type="button" class="btn btn-danger btn-sm w-100" onclick="removePurchaseItem(this)">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
-            `;
-            container.appendChild(row);
-            
-            row.querySelectorAll('input').forEach(input => {
-                input.addEventListener('input', calculatePurchaseTotal);
-            });
+async function updateStatus(selectElement, pedidoId) {
+    const newStatus = selectElement.value;
+    selectElement.className = 'form-select form-select-sm status-select ';
+    
+    if (newStatus === 'Recebido') selectElement.classList.add('status-recebido');
+    else if (newStatus === 'Em separação') selectElement.classList.add('status-em-separacao');
+    else if (newStatus === 'Concluído') selectElement.classList.add('status-concluido');
+    else if (newStatus === 'Cancelado') selectElement.classList.add('status-cancelado');
+    
+    selectElement.disabled = true;
+    
+    try {
+        await apiCall(null, { action: 'updateOrderStatus', pedidoId, newStatus }, false);
+        clearCache();
+    } catch (error) {
+        alert(`Erro: ${error.message}`);
+    } finally {
+        selectElement.disabled = false;
+    }
+}
+
+let currentItemName = '';
+
+function openAddStockModal(itemName, currentStock) {
+    currentItemName = itemName;
+    document.getElementById('modalTitle').textContent = `Adicionar Estoque`;
+    document.getElementById('itemName').textContent = itemName;
+    
+    const stockSpan = document.getElementById('currentStock');
+    stockSpan.textContent = currentStock;
+    
+    let stockClass = 'stock-high';
+    if (currentStock <= LOW_STOCK_THRESHOLD) stockClass = 'stock-low';
+    else if (currentStock <= 30) stockClass = 'stock-medium';
+    stockSpan.className = `stock-badge ${stockClass}`;
+    
+    document.getElementById('quantityToAdd').value = '';
+    addStockModal.show();
+}
+
+async function deleteItem(itemName) {
+    if (!confirm(`Tem certeza que deseja excluir "${itemName}"?`)) return;
+    
+    try {
+        await apiCall(null, { action: 'deleteItem', itemName }, false);
+        clearCache();
+        await fetchInventory();
+    } catch (error) {
+        alert(`Erro: ${error.message}`);
+    }
+}
+
+document.getElementById('saveStockButton').addEventListener('click', async (e) => {
+    const btn = e.target;
+    const quantityToAdd = parseInt(document.getElementById('quantityToAdd').value);
+    
+    if (!quantityToAdd || quantityToAdd <= 0) {
+        alert('Quantidade inválida.');
+        return;
+    }
+    
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
+    
+    try {
+        await apiCall(null, { action: 'addStock', itemName: currentItemName, quantityToAdd }, false);
+        addStockModal.hide();
+        clearCache();
+        await fetchInventory();
+    } catch (error) {
+        alert(`Erro: ${error.message}`);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save"></i> Salvar';
+    }
+});
+
+document.getElementById('saveNewItemButton').addEventListener('click', async (e) => {
+    const btn = e.target;
+    const newItemName = document.getElementById('newItemName').value.trim();
+    const initialQuantity = parseInt(document.getElementById('initialQuantity').value);
+    const category = document.getElementById('itemCategory').value;
+    
+    if (!newItemName || !category || initialQuantity < 0) {
+        alert('Preencha todos os campos corretamente.');
+        return;
+    }
+    
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
+    
+    try {
+        await apiCall(null, { action: 'addNewItem', itemName: newItemName, initialQuantity, category }, false);
+        addNewItemModal.hide();
+        clearCache();
+        await fetchInventory();
+    } catch (error) {
+        alert(`Erro: ${error.message}`);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save"></i> Salvar Material';
+    }
+});
+
+// ==================== MODAL DE COMPRAS COM AUTOCOMPLETE ====================
+
+let purchaseItemCounter = 0;
+let activeAutocompleteInput = null;
+
+function setupAutocomplete(input) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'autocomplete-wrapper';
+    input.parentNode.insertBefore(wrapper, input);
+    wrapper.appendChild(input);
+    
+    const resultsDiv = document.createElement('div');
+    resultsDiv.className = 'autocomplete-results';
+    resultsDiv.style.display = 'none';
+    wrapper.appendChild(resultsDiv);
+    
+    input.addEventListener('input', function() {
+        const value = this.value.toLowerCase().trim();
+        
+        if (value.length < 2) {
+            resultsDiv.style.display = 'none';
+            return;
         }
-
-        function removePurchaseItem(btn) {
-            btn.closest('.purchase-item-row').remove();
-            calculatePurchaseTotal();
+        
+        const matches = allMaterialsList.filter(item => 
+            item.nome.toLowerCase().includes(value)
+        ).slice(0, 5);
+        
+        if (matches.length === 0) {
+            resultsDiv.style.display = 'none';
+            return;
         }
-
-        function calculatePurchaseTotal() {
-            let total = 0;
-            document.querySelectorAll('.purchase-item-row').forEach(row => {
-                const qty = parseFloat(row.querySelector('.purchase-item-qty').value) || 0;
-                const price = parseFloat(row.querySelector('.purchase-item-price').value) || 0;
-                total += qty * price;
-            });
-            
-            document.getElementById('purchaseTotal').textContent = formatCurrency(total);
-        }
-
-        document.getElementById('addPurchaseItem').addEventListener('click', addPurchaseItemRow);
-
-        document.getElementById('addPurchaseModal').addEventListener('shown.bs.modal', () => {
-            const container = document.getElementById('purchase-items-container');
-            if (container.children.length === 0) {
-                addPurchaseItemRow();
-            }
-        });
-
-        document.getElementById('addPurchaseModal').addEventListener('hidden.bs.modal', () => {
-            document.getElementById('dataCompra').value = '';
-            document.getElementById('notaFiscal').value = '';
-            document.getElementById('fornecedor').value = '';
-            document.getElementById('responsavel').value = '';
-            document.getElementById('purchase-items-container').innerHTML = '';
-            purchaseItemCounter = 0;
-            calculatePurchaseTotal();
-        });
-
-        document.getElementById('savePurchaseButton').addEventListener('click', async (e) => {
-            const btn = e.target;
-            const dataCompra = document.getElementById('dataCompra').value;
-            const notaFiscal = document.getElementById('notaFiscal').value.trim();
-            const fornecedor = document.getElementById('fornecedor').value.trim();
-            const responsavel = document.getElementById('responsavel').value.trim();
-            
-            if (!dataCompra || !notaFiscal || !fornecedor || !responsavel) {
-                alert('Preencha todos os campos obrigatórios.');
-                return;
-            }
-            
-            const itens = [];
-            let hasError = false;
-            
-            document.querySelectorAll('.purchase-item-row').forEach(row => {
-                const nome = row.querySelector('.purchase-item-name').value.trim();
-                const qtd = parseInt(row.querySelector('.purchase-item-qty').value);
-                const preco = parseFloat(row.querySelector('.purchase-item-price').value);
+        
+        resultsDiv.innerHTML = matches.map(item => `
+            <div class="autocomplete-item" data-name="${item.nome}" data-category="${item.categoria}">
+                <strong>${item.nome}</strong>
+                <br>
+                <small>${item.categoria}</small>
+            </div>
+        `).join('');
+        
+        resultsDiv.style.display = 'block';
+        
+        resultsDiv.querySelectorAll('.autocomplete-item').forEach(el => {
+            el.addEventListener('click', function() {
+                input.value = this.dataset.name;
                 
-                if (!nome || !qtd || !preco) {
-                    hasError = true;
-                    return;
+                // Preencher categoria automaticamente
+                const row = input.closest('.purchase-item-row');
+                const categorySelect = row.querySelector('.purchase-item-category');
+                if (categorySelect) {
+                    categorySelect.value = this.dataset.category;
                 }
                 
-                itens.push({ nome, qtd, preco });
+                resultsDiv.style.display = 'none';
             });
-            
-            if (hasError || itens.length === 0) {
-                alert('Preencha todos os itens corretamente.');
-                return;
-            }
-            
-            const valorTotal = itens.reduce((sum, item) => sum + (item.qtd * item.preco), 0);
-            
-            btn.disabled = true;
-            btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
-            
-            try {
-                await apiCall(null, {
-                    action: 'registerPurchase',
-                    dataCompra,
-                    notaFiscal,
-                    fornecedor,
-                    responsavel,
-                    itens,
-                    valorTotal
-                });
-                
-                addPurchaseModal.hide();
-                await fetchPurchases();
-            } catch (error) {
-                alert(`Erro: ${error.message}`);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-save"></i> Salvar Compra';
-            }
         });
+    });
+    
+    document.addEventListener('click', function(e) {
+        if (!wrapper.contains(e.target)) {
+            resultsDiv.style.display = 'none';
+        }
+    });
+}
 
-        document.getElementById('searchInventory')?.addEventListener('input', function(e) {
-            const searchTerm = e.target.value.toLowerCase();
-            document.querySelectorAll('#inventory-display tbody tr').forEach(row => {
-                const text = row.textContent.toLowerCase();
-                row.style.display = text.includes(searchTerm) ? '' : 'none';
-            });
-        });
+function addPurchaseItemRow() {
+    purchaseItemCounter++;
+    const container = document.getElementById('purchase-items-container');
+    const row = document.createElement('div');
+    row.classList.add('purchase-item-row');
+    row.innerHTML = `
+        <div class="row g-2 align-items-center">
+            <div class="col-md-4">
+                <input type="text" class="form-control form-control-sm purchase-item-name" placeholder="Nome do material" required>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select form-select-sm purchase-item-category" required>
+                    <option value="">Categoria...</option>
+                    <option value="Material de Escritório">Material de Escritório</option>
+                    <option value="Material para Copa">Material para Copa</option>
+                    <option value="Material de Limpeza">Material de Limpeza</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input type="number" class="form-control form-control-sm purchase-item-qty" placeholder="Qtd" min="1" required>
+            </div>
+            <div class="col-md-2">
+                <input type="number" class="form-control form-control-sm purchase-item-price" placeholder="R$ Unit." min="0" step="0.01" required>
+            </div>
+            <div class="col-md-1">
+                <button type="button" class="btn btn-danger btn-sm w-100" onclick="removePurchaseItem(this)">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `;
+    container.appendChild(row);
+    
+    // Setup autocomplete no campo de nome
+    const nameInput = row.querySelector('.purchase-item-name');
+    setupAutocomplete(nameInput);
+    
+    row.querySelectorAll('input').forEach(input => {
+        input.addEventListener('input', calculatePurchaseTotal);
+    });
+}
 
-        document.getElementById('searchOrders')?.addEventListener('input', function(e) {
-            const searchTerm = e.target.value.toLowerCase();
-            document.querySelectorAll('#orders-display tbody tr').forEach(row => {
-                const text = row.textContent.toLowerCase();
-                row.style.display = text.includes(searchTerm) ? '' : 'none';
-            });
-        });
+function removePurchaseItem(btn) {
+    btn.closest('.purchase-item-row').remove();
+    calculatePurchaseTotal();
+}
 
-        document.getElementById('searchPurchases')?.addEventListener('input', function(e) {
-            const searchTerm = e.target.value.toLowerCase();
-            document.querySelectorAll('#purchases-display tbody tr').forEach(row => {
-                const text = row.textContent.toLowerCase();
-                row.style.display = text.includes(searchTerm) ? '' : 'none';
-            });
-        });
+function calculatePurchaseTotal() {
+    let total = 0;
+    document.querySelectorAll('.purchase-item-row').forEach(row => {
+        const qty = parseFloat(row.querySelector('.purchase-item-qty').value) || 0;
+        const price = parseFloat(row.querySelector('.purchase-item-price').value) || 0;
+        total += qty * price;
+    });
+    
+    document.getElementById('purchaseTotal').textContent = formatCurrency(total);
+}
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const tabs = document.querySelectorAll('#myTab button');
-            tabs.forEach(tab => {
-                tab.addEventListener('shown.bs.tab', (event) => {
-                    const targetId = event.target.id;
-                    if (targetId === 'inventory-tab') fetchInventory();
-                    if (targetId === 'orders-tab') fetchOrders();
-                    if (targetId === 'purchases-tab') fetchPurchases();
-                    if (targetId === 'analytics-tab') fetchAnalytics();
-                });
-            });
+document.getElementById('addPurchaseItem').addEventListener('click', addPurchaseItemRow);
+
+document.getElementById('addPurchaseModal').addEventListener('shown.bs.modal', () => {
+    const container = document.getElementById('purchase-items-container');
+    if (container.children.length === 0) {
+        addPurchaseItemRow();
+    }
+});
+
+document.getElementById('addPurchaseModal').addEventListener('hidden.bs.modal', () => {
+    document.getElementById('dataCompra').value = '';
+    document.getElementById('notaFiscal').value = '';
+    document.getElementById('fornecedor').value = '';
+    document.getElementById('responsavel').value = '';
+    document.getElementById('purchase-items-container').innerHTML = '';
+    purchaseItemCounter = 0;
+    calculatePurchaseTotal();
+});
+
+document.getElementById('savePurchaseButton').addEventListener('click', async (e) => {
+    const btn = e.target;
+    const dataCompra = document.getElementById('dataCompra').value;
+    const notaFiscal = document.getElementById('notaFiscal').value.trim();
+    const fornecedor = document.getElementById('fornecedor').value.trim();
+    const responsavel = document.getElementById('responsavel').value.trim();
+    
+    if (!dataCompra || !notaFiscal || !fornecedor || !responsavel) {
+        alert('Preencha todos os campos obrigatórios.');
+        return;
+    }
+    
+    const itens = [];
+    let hasError = false;
+    
+    document.querySelectorAll('.purchase-item-row').forEach(row => {
+        const nome = row.querySelector('.purchase-item-name').value.trim();
+        const categoria = row.querySelector('.purchase-item-category').value;
+        const qtd = parseInt(row.querySelector('.purchase-item-qty').value);
+        const preco = parseFloat(row.querySelector('.purchase-item-price').value);
+        
+        if (!nome || !categoria || !qtd || !preco) {
+            hasError = true;
+            return;
+        }
+        
+        itens.push({ nome, categoria, qtd, preco });
+    });
+    
+    if (hasError || itens.length === 0) {
+        alert('Preencha todos os itens corretamente, incluindo a categoria.');
+        return;
+    }
+    
+    const valorTotal = itens.reduce((sum, item) => sum + (item.qtd * item.preco), 0);
+    
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
+    
+    try {
+        await apiCall(null, {
+            action: 'registerPurchase',
+            dataCompra,
+            notaFiscal,
+            fornecedor,
+            responsavel,
+            itens,
+            valorTotal
+        }, false);
+        
+        addPurchaseModal.hide();
+        clearCache();
+        await fetchPurchases();
+        await fetchInventory(); // Atualizar inventário também
+    } catch (error) {
+        alert(`Erro: ${error.message}`);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save"></i> Salvar Compra';
+    }
+});
+
+// Buscas
+document.getElementById('searchInventory')?.addEventListener('input', function(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    document.querySelectorAll('#inventory-display tbody tr').forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(searchTerm) ? '' : 'none';
+    });
+});
+
+document.getElementById('searchOrders')?.addEventListener('input', function(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    document.querySelectorAll('#orders-display tbody tr').forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(searchTerm) ? '' : 'none';
+    });
+});
+
+document.getElementById('searchPurchases')?.addEventListener('input', function(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    document.querySelectorAll('#purchases-display tbody tr').forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(searchTerm) ? '' : 'none';
+    });
+});
+
+// Tabs
+document.addEventListener('DOMContentLoaded', () => {
+    const tabs = document.querySelectorAll('#myTab button');
+    tabs.forEach(tab => {
+        tab.addEventListener('shown.bs.tab', (event) => {
+            const targetId = event.target.id;
+            if (targetId === 'inventory-tab') fetchInventory();
+            if (targetId === 'orders-tab') fetchOrders();
+            if (targetId === 'purchases-tab') fetchPurchases();
+            if (targetId === 'analytics-tab') fetchAnalytics();
         });
+    });
+});
     </script>
 </body>
 </html>
