@@ -23,8 +23,8 @@ function getSheets() {
 
 function createComprasSheet(ss) {
   const sheet = ss.insertSheet(SHEET_NAME_COMPRAS);
-  sheet.appendRow(['Data', 'Nota Fiscal', 'Fornecedor', 'Itens', 'Valor Total', 'Responsável']);
-  sheet.getRange(1, 1, 1, 6).setFontWeight('bold').setBackground('#1e3a8a').setFontColor('#ffffff');
+  sheet.appendRow(['Data de Registro', 'Data da Compra (NF)', 'Nota Fiscal', 'Fornecedor', 'Itens', 'Valor Total', 'Responsável']);
+  sheet.getRange(1, 1, 1, 7).setFontWeight('bold').setBackground('#1e3a8a').setFontColor('#ffffff');
   return sheet;
 }
 
@@ -60,6 +60,8 @@ function doPost(e) {
       case 'updateOrderStatus': result = handleUpdateStatus(data); break;
       case 'deleteItem': result = handleDeleteItem(data); break;
       case 'registerPurchase': result = handlePurchaseRegistration(data); break;
+      case 'deleteOrder': result = handleDeleteOrder(data); break;
+      case 'deletePurchase': result = handleDeletePurchase(data); break;
       default: throw new Error("Ação desconhecida.");
     }
     return createJsonResponse(result);
@@ -100,17 +102,26 @@ function getOrdersData() {
 function getPurchasesData() {
   const { compras } = getSheets();
   if (compras.getLastRow() < 2) return [];
-  const values = compras.getRange(2, 1, compras.getLastRow() - 1, 6).getValues();
-  return values.map(([data, notaFiscal, fornecedor, itens, valorTotal, responsavel]) => ({
-    data, notaFiscal, fornecedor, itens, valorTotal, responsavel
+  
+  // Ler as 7 colunas corretamente
+  const values = compras.getRange(2, 1, compras.getLastRow() - 1, 7).getValues();
+  
+  return values.map(([dataRegistro, dataCompra, notaFiscal, fornecedor, itens, valorTotal, responsavel]) => ({
+    data: dataRegistro,           // Data de Registro (para compatibilidade)
+    dataCompra: dataCompra,        // Data da Compra (NF)
+    notaFiscal: notaFiscal,
+    fornecedor: fornecedor,
+    itens: itens,
+    valorTotal: valorTotal,
+    responsavel: responsavel
   })).reverse();
 }
 
 function getAnalyticsData() {
     const { estoque, pedidos } = getSheets();
     const estoqueValues = (estoque.getLastRow() > 1) ? estoque.getRange(2, 2, estoque.getLastRow() - 1, 2).getValues() : [];
-    const lowStockItems = estoqueValues.filter(row => Number(row[1]) <= LOW_STOCK_THRESHOLD);
-    const highStockItems = estoqueValues.filter(row => Number(row[1]) >= HIGH_STOCK_THRESHOLD);
+    const lowStockItems = estoqueValues.filter(row => Number(row[1]) <= LOW_STOCK_THRESHOLD).sort((a, b) => a[1] - b[1]);
+    const highStockItems = estoqueValues.filter(row => Number(row[1]) >= HIGH_STOCK_THRESHOLD).sort((a, b) => b[1] - a[1]);
     const allPedidos = (pedidos.getLastRow() > 1) ? pedidos.getRange(2, 1, pedidos.getLastRow() - 1, 10).getValues() : [];
 
     const now = new Date();
@@ -173,20 +184,27 @@ function handleOrderSubmission(data) {
 }
 
 function handlePurchaseRegistration(data) {
-  const { compras } = getSheets();
+  const { compras, estoque } = getSheets();
   const timestamp = new Date();
   
   // Formatar itens como string JSON para armazenar
   const itensStr = JSON.stringify(data.itens);
   
+  // CORRIGIDO: Salvar nas 7 colunas corretas
   compras.appendRow([
-    timestamp,
-    data.notaFiscal,
-    data.fornecedor,
-    itensStr,
-    data.valorTotal,
-    data.responsavel
+    timestamp,           // Coluna 1: Data de Registro
+    data.dataCompra,     // Coluna 2: Data da Compra (NF)
+    data.notaFiscal,     // Coluna 3: Nota Fiscal
+    data.fornecedor,     // Coluna 4: Fornecedor
+    itensStr,            // Coluna 5: Itens
+    data.valorTotal,     // Coluna 6: Valor Total
+    data.responsavel     // Coluna 7: Responsável
   ]);
+  
+  // Atualizar estoque automaticamente
+  data.itens.forEach(item => {
+    adicionarEstoque(estoque, item.nome, item.qtd, item.categoria);
+  });
   
   return { result: 'success' };
 }
@@ -224,6 +242,43 @@ function handleUpdateStatus(data) {
   } else {
     throw new Error("ID do Pedido não encontrado.");
   }
+}
+
+function handleDeleteOrder(data) {
+  const { pedidos } = getSheets();
+  if (!data.pedidoId) {
+    throw new Error("ID do pedido não fornecido.");
+  }
+
+  const values = pedidos.getRange(2, 2, pedidos.getLastRow() - 1, 1).getValues();
+  
+  for (let i = 0; i < values.length; i++) {
+    if (values[i][0] == data.pedidoId) {
+      pedidos.deleteRow(i + 2);
+      return { result: 'success' };
+    }
+  }
+  
+  throw new Error("Pedido não encontrado.");
+}
+
+function handleDeletePurchase(data) {
+  const { compras } = getSheets();
+  if (!data.notaFiscal) {
+    throw new Error("Nota fiscal não fornecida.");
+  }
+
+  // Nota Fiscal está na coluna 3
+  const values = compras.getRange(2, 3, compras.getLastRow() - 1, 1).getValues();
+  
+  for (let i = 0; i < values.length; i++) {
+    if (values[i][0] == data.notaFiscal) {
+      compras.deleteRow(i + 2);
+      return { result: 'success' };
+    }
+  }
+  
+  throw new Error("Compra não encontrada.");
 }
 
 // Funções auxiliares
@@ -264,6 +319,24 @@ function handleDeleteItem(data) {
     } 
   } 
   throw new Error("Item não encontrado para exclusão."); 
+}
+
+function adicionarEstoque(sheet, nomeItem, quantidade, categoria) {
+  const values = sheet.getRange(2, 2, sheet.getLastRow() - 1, 2).getValues();
+  
+  // Procura se o item já existe
+  for (let i = 0; i < values.length; i++) {
+    if (values[i][0].toString().trim().toLowerCase() === nomeItem.trim().toLowerCase()) {
+      const estoqueAtual = parseInt(values[i][1]) || 0;
+      const novoEstoque = estoqueAtual + parseInt(quantidade);
+      sheet.getRange(i + 2, 3).setValue(novoEstoque);
+      return;
+    }
+  }
+  
+  // Se não existe, cria novo item
+  const newSKU = generateNewSKU(sheet, categoria);
+  sheet.appendRow([newSKU, nomeItem.trim(), quantidade, categoria]);
 }
 
 function darBaixaEstoque(sheet, nomeItem, quantidadeBaixar) { 
