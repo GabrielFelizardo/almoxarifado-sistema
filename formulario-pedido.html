@@ -1,16 +1,15 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Formulário de Pedido de Material - Almoxarifado SEDEICS</title>
-    <!-- Favicon - Ícone de Carrinho (Adaptável: branco no tema escuro, azul no claro) -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 576 512'%3E%3Cstyle%3E path %7B fill: %231e3a8a; %7D @media (prefers-color-scheme: dark) %7B path %7B fill: %23ffffff; %7D %7D%3C/style%3E%3Cpath d='M0 24C0 10.7 10.7 0 24 0H69.5c22 0 41.5 12.8 50.6 32h411c26.3 0 45.5 25 38.6 50.4l-41 152.3c-8.5 31.4-37 53.3-69.5 53.3H170.7l5.4 28.5c2.2 11.3 12.1 19.5 23.6 19.5H488c13.3 0 24 10.7 24 24s-10.7 24-24 24H199.7c-34.6 0-64.3-24.6-70.7-58.5L77.4 54.5c-.7-3.8-4-6.5-7.9-6.5H24C10.7 48 0 37.3 0 24zM128 464a48 48 0 1 1 96 0 48 48 0 1 1 -96 0zm336-48a48 48 0 1 1 0 96 48 48 0 1 1 0-96z'/%3E%3C/svg%3E">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            /* Paleta Profissional Institucional */
             --primary: #1e3a8a;
             --primary-light: #3b82f6;
             --secondary: #475569;
@@ -40,7 +39,6 @@
             line-height: 1.6;
         }
 
-        /* Header Institucional */
         .gov-header {
             background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
             padding: 1.5rem 0;
@@ -55,14 +53,12 @@
             display: inline-block;
         }
 
-        /* Container Principal */
         .main-container {
             max-width: 900px;
             margin: 0 auto;
             padding: 0 1rem 2rem;
         }
 
-        /* Card Principal */
         .main-card {
             background: var(--card-bg);
             border-radius: 8px;
@@ -97,7 +93,6 @@
             padding: 2rem;
         }
 
-        /* Section Headers */
         .section-header {
             display: flex;
             align-items: center;
@@ -119,7 +114,6 @@
             font-size: 1.1rem;
         }
 
-        /* Form Controls */
         .form-label {
             font-weight: 600;
             color: var(--text-primary);
@@ -154,7 +148,6 @@
             color: #94a3b8;
         }
 
-        /* Priority Select Styles */
         .priority-select {
             font-weight: 600;
         }
@@ -174,7 +167,6 @@
             color: #047857;
         }
 
-        /* Item Row */
         .item-row {
             background: #f8fafc;
             border: 2px solid var(--border);
@@ -214,7 +206,6 @@
             color: var(--text-primary);
         }
 
-        /* Buttons */
         .btn {
             border-radius: 6px;
             padding: 0.65rem 1.25rem;
@@ -267,7 +258,6 @@
             margin-right: 0.5rem;
         }
 
-        /* Info Badge */
         .info-badge {
             display: inline-block;
             background: #dbeafe;
@@ -290,7 +280,6 @@
             margin-left: 0.5rem;
         }
 
-        /* Alert */
         .alert {
             border-radius: 6px;
             border: none;
@@ -310,7 +299,6 @@
             border-left: 4px solid var(--danger);
         }
 
-        /* Loading */
         .loading-skeleton {
             background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
             background-size: 200% 100%;
@@ -325,7 +313,6 @@
             100% { background-position: -200% 0; }
         }
 
-        /* Divider */
         hr {
             border: none;
             height: 1px;
@@ -333,13 +320,11 @@
             margin: 2rem 0;
         }
 
-        /* Outro Input */
         .outro-input {
             display: none;
             margin-top: 0.75rem;
         }
 
-        /* Footer */
         .page-footer {
             text-align: center;
             padding: 2rem 1rem 1rem;
@@ -358,7 +343,6 @@
             opacity: 0.8;
         }
 
-        /* Responsividade */
         @media (max-width: 768px) {
             .gov-logo-img {
                 height: 60px;
@@ -374,7 +358,6 @@
             }
         }
 
-        /* Animações sutis */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -386,14 +369,12 @@
     </style>
 </head>
 <body>
-    <!-- Header com Logo -->
     <div class="gov-header">
         <img src="https://raw.githubusercontent.com/GabrielFelizardo/almoxarifado-sistema/main/logo.png" 
              alt="Logo SEDEICS" 
              class="gov-logo-img">
     </div>
 
-    <!-- Container Principal -->
     <div class="main-container">
         <div class="main-card">
             <div class="card-header">
@@ -407,7 +388,6 @@
             <div class="card-body">
                 <form id="pedidoForm">
                     <fieldset id="form-fieldset" disabled>
-                        <!-- Seção 1: Informações do Solicitante -->
                         <div class="section-header">
                             <i class="fas fa-user"></i>
                             <h5>Informações do Solicitante</h5>
@@ -450,7 +430,6 @@
 
                         <hr>
 
-                        <!-- Seção 2: Nível de Necessidade -->
                         <div class="section-header">
                             <i class="fas fa-exclamation-circle"></i>
                             <h5>Nível de Necessidade</h5>
@@ -472,7 +451,6 @@
 
                         <hr>
 
-                        <!-- Seção 3: Itens do Pedido -->
                         <div class="section-header">
                             <i class="fas fa-list"></i>
                             <h5>Itens do Pedido</h5>
@@ -492,7 +470,6 @@
 
                         <hr>
 
-                        <!-- Seção 4: Justificativa -->
                         <div class="section-header">
                             <i class="fas fa-comment-alt"></i>
                             <h5>Justificativa / Observações</h5>
@@ -507,7 +484,6 @@
                             <textarea class="form-control" id="justificativa" rows="4" placeholder="Explique brevemente o motivo desta solicitação..."></textarea>
                         </div>
 
-                        <!-- Botão de Envio -->
                         <div class="d-grid mt-4">
                             <button type="submit" class="btn btn-success btn-lg" id="btn-enviar">
                                 <i class="fas fa-paper-plane"></i>
@@ -517,15 +493,13 @@
                     </fieldset>
                 </form>
 
-                <!-- Alertas -->
                 <div id="alerta" class="mt-4" style="display: none;"></div>
             </div>
         </div>
 
-        <!-- Footer -->
         <div class="page-footer">
             <p class="copyright">
-                © 2025 SEDEICS - Secretaria de Desenvolvimento Econômico, Indústria, Comércio e Serviços
+                © <span id="current-year"></span> SEDEICS - Secretaria de Desenvolvimento Econômico, Indústria, Comércio e Serviços
             </p>
             <p class="developer">
                 Desenvolvido por Gabriel Felizardo da Silva
@@ -536,6 +510,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzGhyNSo1-w9TDM4BmtkMWTn6bLdwbnkcupdr7i5zZaqD6nrcMnqvPnKncVn8_nSb3A/exec";
+        const CACHE_DURATION = 10 * 60 * 1000; // 10 minutos
 
         const form = document.getElementById('pedidoForm');
         const formFieldset = document.getElementById('form-fieldset');
@@ -547,6 +522,37 @@
 
         let materialOptionsHtml = '';
         let itemCounter = 0;
+
+        // Ano automático
+        document.getElementById('current-year').textContent = new Date().getFullYear();
+
+        // Cache
+        function getCache(key) {
+            try {
+                const cached = sessionStorage.getItem(key);
+                if (!cached) return null;
+                
+                const { data, timestamp } = JSON.parse(cached);
+                if (Date.now() - timestamp > CACHE_DURATION) {
+                    sessionStorage.removeItem(key);
+                    return null;
+                }
+                return data;
+            } catch {
+                return null;
+            }
+        }
+
+        function setCache(key, data) {
+            try {
+                sessionStorage.setItem(key, JSON.stringify({
+                    data,
+                    timestamp: Date.now()
+                }));
+            } catch (e) {
+                console.warn('Cache failed:', e);
+            }
+        }
 
         function criarOpcoesDeMaterial(data) {
             let html = '<option value="" selected disabled>Selecione um material...</option>';
@@ -623,10 +629,22 @@
 
         // Carregar materiais
         document.addEventListener('DOMContentLoaded', () => {
+            // Verificar cache primeiro
+            const cached = getCache('inventory_data');
+            if (cached) {
+                console.log('Usando cache de materiais');
+                materialOptionsHtml = criarOpcoesDeMaterial(cached);
+                adicionarItem();
+                loadingMateriaisDiv.style.display = 'none';
+                formFieldset.disabled = false;
+                return;
+            }
+
             fetch(`${SCRIPT_URL}?page=inventory`)
                 .then(res => res.json())
                 .then(data => {
                     if (data.error) throw new Error(data.error);
+                    setCache('inventory_data', data);
                     materialOptionsHtml = criarOpcoesDeMaterial(data);
                     adicionarItem();
                     loadingMateriaisDiv.style.display = 'none';
@@ -644,7 +662,6 @@
 
         btnAdicionarItem.addEventListener('click', adicionarItem);
 
-        // Enviar formulário
         form.addEventListener('submit', (e) => {
             e.preventDefault();
 
