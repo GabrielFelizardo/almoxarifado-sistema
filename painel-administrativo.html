@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -215,7 +214,6 @@
             color: var(--text-secondary);
         }
 
-        /* Loading Skeleton */
         .skeleton {
             background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
             background-size: 200% 100%;
@@ -516,6 +514,16 @@
 
         .btn-danger:hover {
             background: #dc2626;
+            transform: translateY(-1px);
+        }
+
+        .btn-warning {
+            background: var(--warning);
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #ea580c;
             transform: translateY(-1px);
         }
 
@@ -1299,7 +1307,6 @@
         </div>
     </div>
 
-    <!-- Modals -->
     <div class="modal fade" id="addStockModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -1319,6 +1326,60 @@
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="button" class="btn btn-primary" id="saveStockButton">
                         <i class="fas fa-save"></i> Salvar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="reduceStockModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header" style="background: var(--warning); color: white;">
+                    <h5 class="modal-title">Diminuir Estoque</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>Item:</strong> <span id="reduceItemName"></span></p>
+                    <p><strong>Estoque Atual:</strong> <span id="reduceCurrentStock" class="stock-badge"></span></p>
+                    <div class="mb-3">
+                        <label for="quantityToReduce" class="form-label fw-bold">Quantidade a Diminuir:</label>
+                        <input type="number" class="form-control" id="quantityToReduce" min="1" required>
+                        <small class="text-muted">Esta ação remove itens do estoque manualmente</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-warning" id="saveReduceStockButton">
+                        <i class="fas fa-minus"></i> Diminuir
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="editNameModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header" style="background: var(--info); color: white;">
+                    <h5 class="modal-title">Editar Nome do Material</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>SKU:</strong> <span id="editItemSku" class="sku-code"></span></p>
+                    <div class="mb-3">
+                        <label for="editItemOldName" class="form-label fw-bold">Nome Atual:</label>
+                        <input type="text" class="form-control" id="editItemOldName" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editItemNewName" class="form-label fw-bold">Novo Nome:</label>
+                        <input type="text" class="form-control" id="editItemNewName" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-info" id="saveEditNameButton">
+                        <i class="fas fa-save"></i> Salvar Alteração
                     </button>
                 </div>
             </div>
@@ -1441,7 +1502,7 @@ const LOW_STOCK_THRESHOLD = 10;
 const HIGH_STOCK_THRESHOLD = 100;
 const SYSTEM_START_MONTH = 8;
 const SYSTEM_START_YEAR = 2025;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+const CACHE_DURATION = 5 * 60 * 1000;
 
 const ITEMS_PER_PAGE = 20;
 const STOCK_ITEMS_PER_PAGE = 10;
@@ -1449,7 +1510,7 @@ const MONTHS_PER_PAGE_DISPLAY = 12;
 let currentOrdersPage = 1;
 let allOrdersData = [];
 let allInventoryData = {};
-let allMaterialsList = []; // Nova variável para autocomplete
+let allMaterialsList = [];
 let currentInventoryCategory = null;
 let currentLowStockPage = 1;
 let currentHighStockPage = 1;
@@ -1459,10 +1520,11 @@ let currentMonthReport = null;
 const loadingDiv = document.getElementById('loading');
 const errorDiv = document.getElementById('error-display');
 const addStockModal = new bootstrap.Modal(document.getElementById('addStockModal'));
+const reduceStockModal = new bootstrap.Modal(document.getElementById('reduceStockModal'));
+const editNameModal = new bootstrap.Modal(document.getElementById('editNameModal'));
 const addNewItemModal = new bootstrap.Modal(document.getElementById('addNewItemModal'));
 const addPurchaseModal = new bootstrap.Modal(document.getElementById('addPurchaseModal'));
 
-// Funções de Cache
 function getCache(key) {
     try {
         const cached = sessionStorage.getItem(key);
@@ -1503,7 +1565,6 @@ const showLoading = (show) => loadingDiv.style.display = show ? 'block' : 'none'
 const showError = (message) => { errorDiv.textContent = message; errorDiv.style.display = 'block'; };
 const hideMessages = () => errorDiv.style.display = 'none';
 
-// Ano automático no rodapé
 document.getElementById('current-year').textContent = new Date().getFullYear();
 
 async function sha256(message) {
@@ -1581,7 +1642,6 @@ function formatNumber(value) {
 async function apiCall(page = null, payload = null, useCache = true) {
     hideMessages();
     
-    // Verificar cache primeiro
     if (page && useCache && !payload) {
         const cached = getCache(`cache_${page}`);
         if (cached) {
@@ -1600,7 +1660,6 @@ async function apiCall(page = null, payload = null, useCache = true) {
         const data = await response.json();
         if (data.error || data.result === 'error') throw new Error(data.error || data.message);
         
-        // Salvar no cache
         if (page && useCache && !payload) {
             setCache(`cache_${page}`, data);
         }
@@ -1619,7 +1678,6 @@ async function fetchInventory() {
         const data = await apiCall('inventory', null, true);
         allInventoryData = data;
         
-        // Criar lista de materiais para autocomplete
         allMaterialsList = [];
         Object.keys(data).forEach(category => {
             data[category].forEach(item => {
@@ -1706,7 +1764,7 @@ function buildInventoryHtml(data) {
                                 <th style="width: 140px;">Código</th>
                                 <th>Material</th>
                                 <th style="width: 130px;">Estoque</th>
-                                <th style="width: 200px;">Ações</th>
+                                <th style="width: 260px;">Ações</th>
                             </tr>
                         </thead>
                         <tbody class="category-items" data-category="${category}">
@@ -1725,8 +1783,14 @@ function buildInventoryHtml(data) {
                     <td><span class="stock-badge ${stockClass}">${item.qtd}</span></td>
                     <td>
                         <div class="btn-group btn-group-sm" role="group">
-                            <button class="btn btn-primary" onclick="openAddStockModal('${item.nome.replace(/'/g, "\\'")}', ${item.qtd})">
-                                <i class="fas fa-plus"></i> Adicionar
+                            <button class="btn btn-info" onclick="openEditNameModal('${item.nome.replace(/'/g, "\\'")}', '${item.sku}')" title="Editar nome">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-primary" onclick="openAddStockModal('${item.nome.replace(/'/g, "\\'")}', ${item.qtd})" title="Adicionar">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                            <button class="btn btn-warning" onclick="openReduceStockModal('${item.nome.replace(/'/g, "\\'")}', ${item.qtd})" title="Diminuir">
+                                <i class="fas fa-minus"></i>
                             </button>
                             <button class="btn btn-danger" onclick="deleteItem('${item.nome.replace(/'/g, "\\'")}')">
                                 <i class="fas fa-trash"></i>
@@ -1792,8 +1856,14 @@ function changeCategoryPage(category, page) {
                 <td><span class="stock-badge ${stockClass}">${item.qtd}</span></td>
                 <td>
                     <div class="btn-group btn-group-sm" role="group">
-                        <button class="btn btn-primary" onclick="openAddStockModal('${item.nome.replace(/'/g, "\\'")}', ${item.qtd})">
-                            <i class="fas fa-plus"></i> Adicionar
+                        <button class="btn btn-info" onclick="openEditNameModal('${item.nome.replace(/'/g, "\\'")}', '${item.sku}')" title="Editar nome">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-primary" onclick="openAddStockModal('${item.nome.replace(/'/g, "\\'")}', ${item.qtd})" title="Adicionar">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        <button class="btn btn-warning" onclick="openReduceStockModal('${item.nome.replace(/'/g, "\\'")}', ${item.qtd})" title="Diminuir">
+                            <i class="fas fa-minus"></i>
                         </button>
                         <button class="btn btn-danger" onclick="deleteItem('${item.nome.replace(/'/g, "\\'")}')">
                             <i class="fas fa-trash"></i>
@@ -2063,7 +2133,6 @@ async function deletePurchase(notaFiscal) {
         alert(`Erro: ${error.message}`);
     }
 }
-// Continuação do script do painel administrativo
 
 function exportPurchaseTXT(index) {
     const purchase = window.purchasesData[index];
@@ -2708,7 +2777,6 @@ async function loadMonthlyReport(month, year) {
         `;
     }
 }
-// Continuação e finalização do script
 
 function exportMonthlyReportTXT() {
     if (!currentMonthReport) return;
@@ -2928,6 +2996,7 @@ async function updateStatus(selectElement, pedidoId) {
 }
 
 let currentItemName = '';
+let currentItemSku = '';
 
 function openAddStockModal(itemName, currentStock) {
     currentItemName = itemName;
@@ -2944,6 +3013,36 @@ function openAddStockModal(itemName, currentStock) {
     
     document.getElementById('quantityToAdd').value = '';
     addStockModal.show();
+}
+
+function openReduceStockModal(itemName, currentStock) {
+    currentItemName = itemName;
+    document.getElementById('reduceItemName').textContent = itemName;
+    
+    const stockSpan = document.getElementById('reduceCurrentStock');
+    stockSpan.textContent = currentStock;
+    
+    let stockClass = 'stock-high';
+    if (currentStock <= LOW_STOCK_THRESHOLD) stockClass = 'stock-low';
+    else if (currentStock <= 30) stockClass = 'stock-medium';
+    stockSpan.className = `stock-badge ${stockClass}`;
+    
+    const input = document.getElementById('quantityToReduce');
+    input.value = '';
+    input.max = currentStock;
+    
+    reduceStockModal.show();
+}
+
+function openEditNameModal(itemName, itemSku) {
+    currentItemName = itemName;
+    currentItemSku = itemSku;
+    
+    document.getElementById('editItemSku').textContent = itemSku;
+    document.getElementById('editItemOldName').value = itemName;
+    document.getElementById('editItemNewName').value = itemName;
+    
+    editNameModal.show();
 }
 
 async function deleteItem(itemName) {
@@ -2983,6 +3082,66 @@ document.getElementById('saveStockButton').addEventListener('click', async (e) =
     }
 });
 
+document.getElementById('saveReduceStockButton').addEventListener('click', async (e) => {
+    const btn = e.target;
+    const quantityToReduce = parseInt(document.getElementById('quantityToReduce').value);
+    
+    if (!quantityToReduce || quantityToReduce <= 0) {
+        alert('Quantidade inválida.');
+        return;
+    }
+    
+    if (!confirm(`Confirma a diminuição de ${quantityToReduce} unidade(s) de "${currentItemName}"?`)) {
+        return;
+    }
+    
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
+    
+    try {
+        await apiCall(null, { action: 'reduceStock', itemName: currentItemName, quantityToReduce }, false);
+        reduceStockModal.hide();
+        clearCache();
+        await fetchInventory();
+    } catch (error) {
+        alert(`Erro: ${error.message}`);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-minus"></i> Diminuir';
+    }
+});
+
+document.getElementById('saveEditNameButton').addEventListener('click', async (e) => {
+    const btn = e.target;
+    const oldName = document.getElementById('editItemOldName').value;
+    const newName = document.getElementById('editItemNewName').value.trim();
+    
+    if (!newName) {
+        alert('O novo nome não pode estar vazio.');
+        return;
+    }
+    
+    if (oldName === newName) {
+        alert('O novo nome é igual ao nome atual.');
+        return;
+    }
+    
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
+    
+    try {
+        await apiCall(null, { action: 'editItemName', oldName, newName }, false);
+        editNameModal.hide();
+        clearCache();
+        await fetchInventory();
+    } catch (error) {
+        alert(`Erro: ${error.message}`);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save"></i> Salvar Alteração';
+    }
+});
+
 document.getElementById('saveNewItemButton').addEventListener('click', async (e) => {
     const btn = e.target;
     const newItemName = document.getElementById('newItemName').value.trim();
@@ -3009,8 +3168,6 @@ document.getElementById('saveNewItemButton').addEventListener('click', async (e)
         btn.innerHTML = '<i class="fas fa-save"></i> Salvar Material';
     }
 });
-
-// ==================== MODAL DE COMPRAS COM AUTOCOMPLETE ====================
 
 let purchaseItemCounter = 0;
 let activeAutocompleteInput = null;
@@ -3057,7 +3214,6 @@ function setupAutocomplete(input) {
             el.addEventListener('click', function() {
                 input.value = this.dataset.name;
                 
-                // Preencher categoria automaticamente
                 const row = input.closest('.purchase-item-row');
                 const categorySelect = row.querySelector('.purchase-item-category');
                 if (categorySelect) {
@@ -3109,7 +3265,6 @@ function addPurchaseItemRow() {
     `;
     container.appendChild(row);
     
-    // Setup autocomplete no campo de nome
     const nameInput = row.querySelector('.purchase-item-name');
     setupAutocomplete(nameInput);
     
@@ -3206,7 +3361,7 @@ document.getElementById('savePurchaseButton').addEventListener('click', async (e
         addPurchaseModal.hide();
         clearCache();
         await fetchPurchases();
-        await fetchInventory(); // Atualizar inventário também
+        await fetchInventory();
     } catch (error) {
         alert(`Erro: ${error.message}`);
     } finally {
@@ -3215,14 +3370,136 @@ document.getElementById('savePurchaseButton').addEventListener('click', async (e
     }
 });
 
-// Buscas
 document.getElementById('searchInventory')?.addEventListener('input', function(e) {
-    const searchTerm = e.target.value.toLowerCase();
-    document.querySelectorAll('#inventory-display tbody tr').forEach(row => {
-        const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(searchTerm) ? '' : 'none';
+    const searchTerm = e.target.value.toLowerCase().trim();
+    
+    if (searchTerm === '') {
+        // Se a busca estiver vazia, restaura o inventário completo
+        document.getElementById('inventory-display').innerHTML = buildInventoryHtml(allInventoryData);
+        return;
+    }
+    
+    // Filtrar todos os dados
+    const filteredData = {};
+    
+    Object.keys(allInventoryData).forEach(category => {
+        const filteredItems = allInventoryData[category].filter(item => {
+            const searchableText = `${item.sku} ${item.nome} ${category}`.toLowerCase();
+            return searchableText.includes(searchTerm);
+        });
+        
+        if (filteredItems.length > 0) {
+            filteredData[category] = filteredItems;
+        }
     });
+    
+    // Reconstruir o HTML com os resultados filtrados (sem paginação)
+    document.getElementById('inventory-display').innerHTML = buildFilteredInventoryHtml(filteredData, searchTerm);
 });
+
+function buildFilteredInventoryHtml(data, searchTerm) {
+    const sortedCategories = Object.keys(data).sort();
+    
+    if (sortedCategories.length === 0) {
+        return `
+            <div class="empty-state">
+                <i class="fas fa-search"></i>
+                <h5>Nenhum resultado encontrado</h5>
+                <p>Tente buscar com outros termos: código, nome do material ou categoria</p>
+                <button class="btn btn-primary mt-3" onclick="document.getElementById('searchInventory').value = ''; document.getElementById('searchInventory').dispatchEvent(new Event('input'));">
+                    <i class="fas fa-times"></i> Limpar Busca
+                </button>
+            </div>
+        `;
+    }
+
+    let totalResults = 0;
+    Object.values(data).forEach(items => totalResults += items.length);
+
+    let html = `
+        <div class="alert alert-info d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <i class="fas fa-info-circle"></i>
+                <strong>${totalResults}</strong> resultado(s) encontrado(s) para "<strong>${searchTerm}</strong>"
+            </div>
+            <button class="btn btn-sm btn-outline-primary" onclick="document.getElementById('searchInventory').value = ''; document.getElementById('searchInventory').dispatchEvent(new Event('input'));">
+                <i class="fas fa-times"></i> Limpar Busca
+            </button>
+        </div>
+    `;
+
+    const categoryIcons = {
+        'Material de Escritório': 'fas fa-pen',
+        'Material para Copa': 'fas fa-mug-hot',
+        'Material de Limpeza': 'fas fa-broom'
+    };
+
+    sortedCategories.forEach(category => {
+        const items = data[category].sort((a, b) => a.nome.localeCompare(b.nome));
+        const icon = categoryIcons[category] || 'fas fa-box';
+        
+        html += `
+            <div class="category-section">
+                <div class="category-header">
+                    <div class="category-title">
+                        <i class="${icon}"></i>
+                        ${category}
+                    </div>
+                    <span class="category-badge">${items.length} itens</span>
+                </div>
+                <div class="table-container">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width: 140px;">Código</th>
+                                <th>Material</th>
+                                <th style="width: 130px;">Estoque</th>
+                                <th style="width: 260px;">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+        `;
+
+        items.forEach(item => {
+            let stockClass = 'stock-high';
+            if (item.qtd <= LOW_STOCK_THRESHOLD) stockClass = 'stock-low';
+            else if (item.qtd <= 30) stockClass = 'stock-medium';
+
+            html += `
+                <tr>
+                    <td><span class="sku-code">${item.sku}</span></td>
+                    <td><strong>${item.nome}</strong></td>
+                    <td><span class="stock-badge ${stockClass}">${item.qtd}</span></td>
+                    <td>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button class="btn btn-info" onclick="openEditNameModal('${item.nome.replace(/'/g, "\\'")}', '${item.sku}')" title="Editar nome">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-primary" onclick="openAddStockModal('${item.nome.replace(/'/g, "\\'")}', ${item.qtd})" title="Adicionar">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                            <button class="btn btn-warning" onclick="openReduceStockModal('${item.nome.replace(/'/g, "\\'")}', ${item.qtd})" title="Diminuir">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                            <button class="btn btn-danger" onclick="deleteItem('${item.nome.replace(/'/g, "\\'")}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+
+        html += `
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    });
+
+    return html;
+}
 
 document.getElementById('searchOrders')?.addEventListener('input', function(e) {
     const searchTerm = e.target.value.toLowerCase();
@@ -3240,7 +3517,6 @@ document.getElementById('searchPurchases')?.addEventListener('input', function(e
     });
 });
 
-// Tabs
 document.addEventListener('DOMContentLoaded', () => {
     const tabs = document.querySelectorAll('#myTab button');
     tabs.forEach(tab => {
