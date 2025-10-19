@@ -508,8 +508,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzGhyNSo1-w9TDM4BmtkMWTn6bLdwbnkcupdr7i5zZaqD6nrcMnqvPnKncVn8_nSb3A/exec";
-        const CACHE_DURATION = 10 * 60 * 1000; // 10 minutos
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxIdXNAVqGQ8b0qPDG538tYyfSLscekqG5CIL-Ompm6LVV8omdRlB9ep1xWIU13ktkrNg/exec";
+        const CACHE_DURATION = 10 * 60 * 1000;
 
         const form = document.getElementById('pedidoForm');
         const formFieldset = document.getElementById('form-fieldset');
@@ -522,10 +522,8 @@
         let materialOptionsHtml = '';
         let itemCounter = 0;
 
-        // Ano automático
         document.getElementById('current-year').textContent = new Date().getFullYear();
 
-        // Cache
         function getCache(key) {
             try {
                 const cached = sessionStorage.getItem(key);
@@ -626,9 +624,7 @@
             itemCounter = items.length;
         }
 
-        // Carregar materiais
         document.addEventListener('DOMContentLoaded', () => {
-            // Verificar cache primeiro
             const cached = getCache('inventory_data');
             if (cached) {
                 console.log('Usando cache de materiais');
