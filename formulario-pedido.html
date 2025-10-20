@@ -257,7 +257,7 @@
             margin-right: 0.5rem;
         }
 
-        .info-badge {
+        .info-badge { /* Para Opcional */
             display: inline-block;
             background: #dbeafe;
             color: var(--accent);
@@ -268,7 +268,7 @@
             margin-left: 0.5rem;
         }
 
-        .required-badge {
+        .required-badge { /* Para Obrigatório */
             display: inline-block;
             background: #fee2e2;
             color: var(--danger);
@@ -296,6 +296,12 @@
             background: #fee2e2;
             color: var(--danger);
             border-left: 4px solid var(--danger);
+        }
+         
+        .alert-warning {
+            background: #fef3c7;
+            color: var(--warning);
+            border-left: 4px solid var(--warning);
         }
 
         .loading-skeleton {
@@ -385,6 +391,9 @@
             </div>
 
             <div class="card-body">
+                
+                <div id="alerta" class="mb-4" style="display: none;"></div> 
+
                 <form id="pedidoForm">
                     <fieldset id="form-fieldset" disabled>
                         <div class="section-header">
@@ -397,6 +406,7 @@
                                 <label for="solicitante" class="form-label">
                                     <i class="fas fa-user-circle"></i>
                                     Nome Completo
+                                    <span class="required-badge">Obrigatório</span>
                                 </label>
                                 <input type="text" class="form-control" id="solicitante" placeholder="Digite seu nome completo" required>
                             </div>
@@ -404,6 +414,7 @@
                                 <label for="idFuncional" class="form-label">
                                     <i class="fas fa-id-badge"></i>
                                     ID Funcional
+                                    <span class="info-badge">Opcional</span>
                                 </label>
                                 <input type="text" class="form-control" id="idFuncional" placeholder="Ex: 12345">
                             </div>
@@ -411,6 +422,7 @@
                                 <label for="setor" class="form-label">
                                     <i class="fas fa-building"></i>
                                     Setor
+                                     <span class="required-badge">Obrigatório</span>
                                 </label>
                                 <select class="form-select" id="setor" required>
                                     <option value="" selected disabled>Selecione seu setor...</option>
@@ -438,8 +450,7 @@
                             <label for="nivelNecessidade" class="form-label">
                                 <i class="fas fa-flag"></i>
                                 Qual a urgência desta solicitação?
-                                <span class="required-badge">Obrigatório</span>
-                            </label>
+                                <span class="required-badge">Obrigatório</span> </label>
                             <select class="form-select priority-select" id="nivelNecessidade" required>
                                 <option value="" selected disabled>Selecione o nível de necessidade...</option>
                                 <option value="Urgente">🔴 Urgente - Necessário imediatamente</option>
@@ -478,25 +489,20 @@
                             <label for="justificativa" class="form-label">
                                 <i class="fas fa-edit"></i>
                                 Descreva o motivo da solicitação
-                                <span class="info-badge">Opcional</span>
-                            </label>
+                                <span class="info-badge">Opcional</span> </label>
                             <textarea class="form-control" id="justificativa" rows="4" placeholder="Explique brevemente o motivo desta solicitação..."></textarea>
                         </div>
 
                         <div class="d-grid mt-4">
-                            <button type="submit" class="btn btn-success btn-lg" id="btn-enviar">
+                            <button type="button" class="btn btn-success btn-lg" id="btn-enviar">
                                 <i class="fas fa-paper-plane"></i>
                                 Enviar Pedido
                             </button>
                         </div>
                     </fieldset>
                 </form>
-
-                <div id="alerta" class="mt-4" style="display: none;"></div>
-            </div>
-        </div>
-
-        <div class="page-footer">
+                 
+            </div> </div> <div class="page-footer">
             <p class="copyright">
                 © <span id="current-year"></span> SEDEICS - Secretaria de Desenvolvimento Econômico, Indústria, Comércio e Serviços
             </p>
@@ -504,11 +510,9 @@
                 Desenvolvido por Gabriel Felizardo da Silva
             </p>
         </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    </div> <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxIdXNAVqGQ8b0qPDG538tYyfSLscekqG5CIL-Ompm6LVV8omdRlB9ep1xWIU13ktkrNg/exec";
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzqJ-EMVnmbF5ryhnFUmrsyZVxSHbvmxLk1OVNavKNtNccCQSbGuh3OCC-HDbUrdMVIUA/exec"; // Sua Nova URL
         const CACHE_DURATION = 10 * 60 * 1000;
 
         const form = document.getElementById('pedidoForm');
@@ -517,7 +521,7 @@
         const btnAdicionarItem = document.getElementById('adicionarItem');
         const itensContainer = document.getElementById('itens-container');
         const btnEnviar = document.getElementById('btn-enviar');
-        const alerta = document.getElementById('alerta');
+        const alerta = document.getElementById('alerta'); 
 
         let materialOptionsHtml = '';
         let itemCounter = 0;
@@ -528,52 +532,36 @@
             try {
                 const cached = sessionStorage.getItem(key);
                 if (!cached) return null;
-                
                 const { data, timestamp } = JSON.parse(cached);
                 if (Date.now() - timestamp > CACHE_DURATION) {
                     sessionStorage.removeItem(key);
                     return null;
                 }
                 return data;
-            } catch {
-                return null;
-            }
+            } catch { return null; }
         }
 
         function setCache(key, data) {
             try {
-                sessionStorage.setItem(key, JSON.stringify({
-                    data,
-                    timestamp: Date.now()
-                }));
-            } catch (e) {
-                console.warn('Cache failed:', e);
-            }
+                sessionStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
+            } catch (e) { console.warn('Cache failed:', e); }
         }
 
         function criarOpcoesDeMaterial(data) {
             let html = '<option value="" selected disabled>Selecione um material...</option>';
             const sortedCategories = Object.keys(data).sort();
-
             sortedCategories.forEach(category => {
                 html += `<optgroup label="${category}">`;
                 const sortedItems = data[category].sort((a, b) => a.nome.localeCompare(b.nome));
-                sortedItems.forEach(item => {
-                    html += `<option value="${item.nome}">${item.nome}</option>`;
-                });
+                sortedItems.forEach(item => { html += `<option value="${item.nome}">${item.nome}</option>`; });
                 html += `</optgroup>`;
             });
-
             html += '<option value="Outros">Outros (especificar)</option>';
             return html;
         }
 
         function adicionarItem() {
-            if (!materialOptionsHtml) {
-                alert("Aguarde o carregamento dos materiais.");
-                return;
-            }
-
+            if (!materialOptionsHtml) { alert("Aguarde o carregamento dos materiais."); return; }
             itemCounter++;
             const itemDiv = document.createElement('div');
             itemDiv.classList.add('item-row');
@@ -584,24 +572,17 @@
                 </div>
                 <div class="row g-2">
                     <div class="col-md-8">
-                        <select class="form-select item-select" required>
-                            ${materialOptionsHtml}
-                        </select>
+                        <select class="form-select item-select" required> ${materialOptionsHtml} </select>
                     </div>
                     <div class="col-md-3">
                         <input type="number" class="form-control" placeholder="Quantidade" min="1" required>
                     </div>
                     <div class="col-md-1 d-flex align-items-center">
-                        <button class="btn btn-danger w-100" type="button" onclick="removerItem(this)">
-                            <i class="fas fa-trash"></i>
-                        </button>
+                        <button class="btn btn-danger w-100" type="button" onclick="removerItem(this)"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
-                <input type="text" class="form-control outro-input" placeholder="Especifique o material solicitado">
-            `;
-
+                <input type="text" class="form-control outro-input" placeholder="Especifique o material solicitado">`;
             itensContainer.appendChild(itemDiv);
-
             itemDiv.querySelector('.item-select').addEventListener('change', function() {
                 const outroInput = this.closest('.item-row').querySelector('.outro-input');
                 outroInput.style.display = this.value === 'Outros' ? 'block' : 'none';
@@ -609,10 +590,7 @@
             });
         }
 
-        function removerItem(btn) {
-            btn.closest('.item-row').remove();
-            atualizarNumerosItens();
-        }
+        function removerItem(btn) { btn.closest('.item-row').remove(); atualizarNumerosItens(); }
 
         function atualizarNumerosItens() {
             const items = itensContainer.querySelectorAll('.item-row');
@@ -634,9 +612,8 @@
                 formFieldset.disabled = false;
                 return;
             }
-
             fetch(`${SCRIPT_URL}?page=inventory`)
-                .then(res => res.json())
+                .then(res => { if (!res.ok) throw new Error(`Erro na rede: ${res.statusText}`); return res.json(); })
                 .then(data => {
                     if (data.error) throw new Error(data.error);
                     setCache('inventory_data', data);
@@ -646,84 +623,58 @@
                     formFieldset.disabled = false;
                 })
                 .catch(error => {
-                    loadingMateriaisDiv.innerHTML = `
-                        <div class="alert alert-danger">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            Erro ao carregar materiais: ${error.message}
-                        </div>
-                    `;
+                    loadingMateriaisDiv.innerHTML = `<div class="alert alert-danger"><i class="fas fa-exclamation-triangle"></i> Erro ao carregar materiais: ${error.message}</div>`;
                 });
         });
 
         btnAdicionarItem.addEventListener('click', adicionarItem);
 
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-
+        btnEnviar.addEventListener('click', () => {
+            if (!form.checkValidity()) {
+                alerta.style.display = 'block';
+                alerta.className = 'alert alert-warning';
+                alerta.innerHTML = `<div class="d-flex align-items-center"><i class="fas fa-exclamation-triangle fa-2x me-3"></i><div><strong>Campos obrigatórios não preenchidos</strong><p class="mb-0 mt-1">Por favor, verifique o formulário e preencha todos os campos marcados como obrigatórios.</p></div></div>`;
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                return;
+            }
+            alerta.style.display = 'none';
             btnEnviar.disabled = true;
             btnEnviar.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Enviando...';
-
             const data = {
                 action: 'submitOrder',
                 solicitante: document.getElementById('solicitante').value,
-                idFuncional: document.getElementById('idFuncional').value,
+                idFuncional: document.getElementById('idFuncional').value, // Continua sendo enviado, mesmo opcional
                 setor: document.getElementById('setor').value,
                 nivelNecessidade: document.getElementById('nivelNecessidade').value,
                 justificativa: document.getElementById('justificativa').value,
                 itens: []
             };
-
             itensContainer.querySelectorAll('.item-row').forEach(row => {
                 let nome = row.querySelector('.item-select').value;
-                if (nome === 'Outros') {
-                    nome = row.querySelector('.outro-input').value.trim();
-                }
+                if (nome === 'Outros') { nome = row.querySelector('.outro-input').value.trim(); }
                 const qtd = row.querySelector('input[type="number"]').value;
-                if (nome && qtd > 0) {
-                    data.itens.push({ nome, qtd });
-                }
+                if (nome && qtd > 0) { data.itens.push({ nome, qtd }); }
             });
 
-            fetch(SCRIPT_URL, {
-                method: 'POST',
-                mode: 'cors',
-                body: JSON.stringify(data)
-            })
-            .then(res => res.json())
+            fetch(SCRIPT_URL, { method: 'POST', mode: 'cors', body: JSON.stringify(data) })
+            .then(res => { if (!res.ok) throw new Error(`Erro na rede: ${res.statusText}`); return res.json(); })
             .then(response => {
                 alerta.style.display = 'block';
                 if (response.result === 'success') {
                     alerta.className = 'alert alert-success';
-                    alerta.innerHTML = `
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-check-circle fa-2x me-3"></i>
-                            <div>
-                                <strong>Pedido registrado com sucesso!</strong>
-                                <p class="mb-0 mt-1">Seu pedido foi registrado no sistema e será processado pelo almoxarifado.</p>
-                            </div>
-                        </div>
-                    `;
+                    alerta.innerHTML = `<div class="d-flex align-items-center"><i class="fas fa-check-circle fa-2x me-3"></i><div><strong>Pedido registrado com sucesso!</strong><p class="mb-0 mt-1">Seu pedido foi registrado no sistema e será processado pelo almoxarifado.</p></div></div>`;
                     form.reset();
                     itensContainer.innerHTML = '';
                     itemCounter = 0;
                     adicionarItem();
                     window.scrollTo({ top: 0, behavior: 'smooth' });
-                } else {
-                    throw new Error(response.message);
-                }
+                } else { throw new Error(response.message || 'Erro desconhecido do servidor.'); }
             })
             .catch(error => {
                 alerta.style.display = 'block';
                 alerta.className = 'alert alert-danger';
-                alerta.innerHTML = `
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
-                        <div>
-                            <strong>Erro ao enviar pedido</strong>
-                            <p class="mb-0 mt-1">${error.message}</p>
-                        </div>
-                    </div>
-                `;
+                alerta.innerHTML = `<div class="d-flex align-items-center"><i class="fas fa-exclamation-triangle fa-2x me-3"></i><div><strong>Erro ao enviar pedido</strong><p class="mb-0 mt-1">${error.message}</p></div></div>`;
+                 window.scrollTo({ top: 0, behavior: 'smooth' });
             })
             .finally(() => {
                 btnEnviar.disabled = false;
