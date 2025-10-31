@@ -1450,6 +1450,36 @@ const ITEMS_PER_PAGE = 20;
 const STOCK_ITEMS_PER_PAGE = 10;
 
 // =======================================================================
+// FUNÇÕES UTILITÁRIAS DE DATA
+// =======================================================================
+function formatDateFromISO(isoString) {
+    if (!isoString) return 'Data inválida';
+    
+    try {
+        const date = new Date(isoString);
+        // Adiciona o offset do timezone para garantir a data correta
+        const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+        const localDate = new Date(date.getTime() + userTimezoneOffset);
+        
+        return localDate.toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            timeZone: 'America/Sao_Paulo'
+        });
+    } catch (e) {
+        console.error('Erro ao formatar data:', e);
+        return 'Data inválida';
+    }
+}
+
+function dateInputToISO(dateInputValue) {
+    // Converte "2025-01-15" para ISO com hora meio-dia local
+    const [year, month, day] = dateInputValue.split('-');
+    return new Date(year, month - 1, day, 12, 0, 0).toISOString();
+}
+
+// =======================================================================
 // VARIÁVEIS GLOBAIS
 // =======================================================================
 let currentOrdersPage = 1;
@@ -1940,8 +1970,9 @@ function buildOrdersHtml(data) {
                 </td>
                 <td>
                     <select class="form-select form-select-sm status-select ${statusClass}" 
-                            onchange="updateStatus(this, ${order.rowId})"
-                            data-row-id="${order.rowId}">
+        onchange="updateStatus(this, ${order.rowId})"
+        data-row-id="${order.rowId}"
+        data-previous-value="${order.status}">
                         <option value="Recebido" ${order.status === 'Recebido' ? 'selected' : ''}>Recebido</option>
                         <option value="Em separação" ${order.status === 'Em separação' ? 'selected' : ''}>Em separação</option>
                         <option value="Concluído" ${order.status === 'Concluído' ? 'selected' : ''}>Concluído</option>
@@ -2047,11 +2078,8 @@ function buildPurchasesHtml(data) {
     `;
 
     data.forEach((purchase, index) => {
-        let dataExibicao = purchase.data;
-        if (purchase.dataCompra) {
-            dataExibicao = purchase.dataCompra;
-        }
-        const purchaseDate = new Date(dataExibicao).toLocaleDateString('pt-BR');
+      let dataExibicao = purchase.dataCompra || purchase.data;
+    const purchaseDate = formatDateFromISO(dataExibicao);
         
         let itens = [];
         try {
@@ -2469,12 +2497,55 @@ function buildFilteredInventoryHtml(data, searchTerm) {
 }
 
 // =======================================================================
-// AÇÕES DE PEDIDOS
+// AÇÕES DE PEDIDOS - COM VALIDAÇÃO DE ESTOQUE
 // =======================================================================
 async function updateStatus(selectElement, rowId) {
     const newStatus = selectElement.value;
-    selectElement.className = 'form-select form-select-sm status-select ';
+    const oldClass = selectElement.className;
     
+    // Se está tentando marcar como Concluído, validar estoque primeiro
+    if (newStatus === 'Concluído') {
+        const row = selectElement.closest('tr');
+        const itemName = row.children[4].querySelector('strong').textContent;
+        const itemQty = parseInt(row.children[4].querySelector('small').textContent.replace('Qtd: ', ''));
+        
+        // Buscar estoque atual do item
+        let currentStock = 0;
+        let itemFound = false;
+        
+        for (const category in allInventoryData) {
+            const item = allInventoryData[category].find(i => i.nome === itemName);
+            if (item) {
+                currentStock = item.qtd;
+                itemFound = true;
+                break;
+            }
+        }
+        
+        // Validação de estoque
+        if (!itemFound) {
+            alert(`⚠️ ATENÇÃO: Material "${itemName}" não encontrado no inventário.\n\nNão é possível concluir este pedido.`);
+            selectElement.value = selectElement.dataset.previousValue || 'Recebido';
+            return;
+        }
+        
+        if (currentStock < itemQty) {
+            alert(`❌ ESTOQUE INSUFICIENTE\n\nMaterial: ${itemName}\nQuantidade solicitada: ${itemQty}\nEstoque disponível: ${currentStock}\n\n⚠️ Não é possível concluir este pedido.\n\nAções sugeridas:\n• Registre uma compra para repor o estoque\n• Reduza a quantidade do pedido\n• Aguarde reposição do material`);
+            
+            // Reverter para o status anterior
+            selectElement.value = selectElement.dataset.previousValue || 'Recebido';
+            return;
+        }
+        
+        // Confirmação adicional antes de concluir
+        if (!confirm(`✅ Estoque suficiente!\n\nMaterial: ${itemName}\nQuantidade: ${itemQty}\nEstoque atual: ${currentStock}\nEstoque após conclusão: ${currentStock - itemQty}\n\nConfirma a conclusão deste pedido?`)) {
+            selectElement.value = selectElement.dataset.previousValue || 'Recebido';
+            return;
+        }
+    }
+    
+    // Atualizar classe visual
+    selectElement.className = 'form-select form-select-sm status-select ';
     if (newStatus === 'Recebido') selectElement.classList.add('status-recebido');
     else if (newStatus === 'Em separação') selectElement.classList.add('status-em-separacao');
     else if (newStatus === 'Concluído') selectElement.classList.add('status-concluido');
@@ -2484,16 +2555,53 @@ async function updateStatus(selectElement, rowId) {
     
     try {
         await apiCall(null, { action: 'updateOrderStatus', rowId, newStatus }, false);
-        clearCache();
+        
+        // Guardar o novo status como anterior para próxima mudança
+        selectElement.dataset.previousValue = newStatus;
+        
+        // Se foi concluído com sucesso, atualizar cache do inventário
+        if (newStatus === 'Concluído') {
+            clearCache();
+            // Recarregar inventário em background para manter dados atualizados
+            fetchInventory().catch(err => console.error('Erro ao atualizar inventário:', err));
+        }
     } catch (error) {
-        alert(`Erro: ${error.message}`);
+        alert(`Erro ao atualizar status: ${error.message}`);
+        // Reverter para status anterior em caso de erro
+        selectElement.value = selectElement.dataset.previousValue || 'Recebido';
     } finally {
         selectElement.disabled = false;
     }
 }
 
 async function deleteOrder(pedidoId) {
-    if (!confirm(`⚠️ Tem certeza que deseja excluir o pedido ${pedidoId}?\n\nTodas as linhas deste pedido serão removidas permanentemente.`)) {
+    // Buscar informações do pedido para mostrar no alerta
+    const pedidoInfo = allOrdersData.find(order => order.pedidoId === pedidoId);
+    
+    let confirmMessage = `⚠️ Tem certeza que deseja excluir o pedido ${pedidoId}?`;
+    
+    if (pedidoInfo) {
+        confirmMessage = `⚠️ CONFIRMAR EXCLUSÃO DE PEDIDO\n\n` +
+                        `Pedido: ${pedidoId}\n` +
+                        `Solicitante: ${pedidoInfo.solicitante}\n` +
+                        `Setor: ${pedidoInfo.setor}\n` +
+                        `Item: ${pedidoInfo.item} (Qtd: ${pedidoInfo.qtd})\n` +
+                        `Status atual: ${pedidoInfo.status}\n\n`;
+        
+        // Alerta especial se o pedido já foi concluído
+        if (pedidoInfo.status === 'Concluído') {
+            confirmMessage += `⚠️ ATENÇÃO: Este pedido já foi CONCLUÍDO!\n` +
+                            `O estoque já foi baixado.\n` +
+                            `A exclusão NÃO devolverá os itens ao estoque.\n\n`;
+        }
+        
+        confirmMessage += `Todas as linhas deste pedido serão removidas PERMANENTEMENTE.\n\n` +
+                         `Deseja continuar?`;
+    } else {
+        confirmMessage += `\n\nTodas as linhas deste pedido serão removidas permanentemente.\n\nDeseja continuar?`;
+    }
+    
+    if (!confirm(confirmMessage)) {
         return;
     }
     
@@ -2501,7 +2609,13 @@ async function deleteOrder(pedidoId) {
         await apiCall(null, { action: 'deleteOrder', pedidoId }, false);
         clearCache();
         await fetchOrders();
-        alert('✅ Pedido excluído com sucesso!');
+        
+        // Mensagem de sucesso mais informativa
+        if (pedidoInfo && pedidoInfo.status === 'Concluído') {
+            alert('✅ Pedido excluído com sucesso!\n\n⚠️ Lembrete: O estoque NÃO foi revertido.\nSe necessário, adicione manualmente os itens de volta ao inventário.');
+        } else {
+            alert('✅ Pedido excluído com sucesso!');
+        }
     } catch (error) {
         alert(`❌ Erro ao excluir pedido:\n\n${error.message}`);
     }
@@ -2591,8 +2705,9 @@ function exportPurchasePDF(index) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
+    // ✅ CORREÇÃO
     let dataExibicao = purchase.dataCompra || purchase.data;
-    const purchaseDate = new Date(dataExibicao).toLocaleDateString('pt-BR');
+    const purchaseDate = formatDateFromISO(dataExibicao);
     
     let itens = [];
     try {
@@ -2876,8 +2991,13 @@ function openEditPurchaseModal(index) {
     const purchase = window.purchasesData[index];
     currentEditPurchaseData = purchase;
     
+    // ✅ CORREÇÃO: Extrair data do ISO corretamente
     const dataCompra = purchase.dataCompra || purchase.data;
-    document.getElementById('editDataCompra').value = new Date(dataCompra).toISOString().split('T')[0];
+    
+    // Extrair apenas a parte da data (YYYY-MM-DD) do ISO string
+    const dateOnly = dataCompra.split('T')[0];
+    
+    document.getElementById('editDataCompra').value = dateOnly;
     document.getElementById('editNotaFiscal').value = purchase.notaFiscal;
     document.getElementById('editFornecedor').value = purchase.fornecedor;
     document.getElementById('editResponsavel').value = purchase.responsavel;
@@ -3119,136 +3239,144 @@ document.addEventListener('DOMContentLoaded', () => {
         calculatePurchaseTotal();
     });
     
-    // Salvar compra
-    document.getElementById('savePurchaseButton').addEventListener('click', async (e) => {
-        const btn = e.target;
-        const dataCompra = document.getElementById('dataCompra').value;
-        const notaFiscal = document.getElementById('notaFiscal').value.trim();
-        const fornecedor = document.getElementById('fornecedor').value.trim();
-        const responsavel = document.getElementById('responsavel').value.trim();
+   // Salvar compra
+document.getElementById('savePurchaseButton').addEventListener('click', async (e) => {
+    const btn = e.target;
+    const dataCompraInput = document.getElementById('dataCompra').value;
+    const notaFiscal = document.getElementById('notaFiscal').value.trim();
+    const fornecedor = document.getElementById('fornecedor').value.trim();
+    const responsavel = document.getElementById('responsavel').value.trim();
+    
+    if (!dataCompraInput || !notaFiscal || !fornecedor || !responsavel) {
+        alert('Preencha todos os campos obrigatórios.');
+        return;
+    }
+    
+    const itens = [];
+    let hasError = false;
+    
+    document.querySelectorAll('#purchase-items-container .purchase-item-row').forEach(row => {
+        const nome = row.querySelector('.purchase-item-name').value.trim();
+        const categoria = row.querySelector('.purchase-item-category').value;
+        const qtd = parseInt(row.querySelector('.purchase-item-qty').value);
+        const preco = parseFloat(row.querySelector('.purchase-item-price').value);
         
-        if (!dataCompra || !notaFiscal || !fornecedor || !responsavel) {
-            alert('Preencha todos os campos obrigatórios.');
+        if (!nome || !categoria || !qtd || !preco) {
+            hasError = true;
             return;
         }
         
-        const itens = [];
-        let hasError = false;
-        
-        document.querySelectorAll('#purchase-items-container .purchase-item-row').forEach(row => {
-            const nome = row.querySelector('.purchase-item-name').value.trim();
-            const categoria = row.querySelector('.purchase-item-category').value;
-            const qtd = parseInt(row.querySelector('.purchase-item-qty').value);
-            const preco = parseFloat(row.querySelector('.purchase-item-price').value);
-            
-            if (!nome || !categoria || !qtd || !preco) {
-                hasError = true;
-                return;
-            }
-            
-            itens.push({ nome, categoria, qtd, preco });
-        });
-        
-        if (hasError || itens.length === 0) {
-            alert('Preencha todos os itens corretamente, incluindo a categoria.');
-            return;
-        }
-        
-        const valorTotal = itens.reduce((sum, item) => sum + (item.qtd * item.preco), 0);
-        
-        btn.disabled = true;
-        btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
-        
-        try {
-            await apiCall(null, {
-                action: 'registerPurchase',
-                dataCompra,
-                notaFiscal,
-                fornecedor,
-                responsavel,
-                itens,
-                valorTotal
-            }, false);
-            
-            addPurchaseModal.hide();
-            clearCache();
-            await fetchPurchases();
-            await fetchInventory();
-        } catch (error) {
-            alert(`Erro: ${error.message}`);
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-save"></i> Salvar Compra';
-        }
+        itens.push({ nome, categoria, qtd, preco });
     });
     
-    // Editar compra
-    document.getElementById('saveEditPurchaseButton').addEventListener('click', async (e) => {
-        const btn = e.target;
-        const dataCompra = document.getElementById('editDataCompra').value;
-        const notaFiscal = document.getElementById('editNotaFiscal').value.trim();
-        const fornecedor = document.getElementById('editFornecedor').value.trim();
-        const responsavel = document.getElementById('editResponsavel').value.trim();
+    if (hasError || itens.length === 0) {
+        alert('Preencha todos os itens corretamente, incluindo a categoria.');
+        return;
+    }
+    
+    const valorTotal = itens.reduce((sum, item) => sum + (item.qtd * item.preco), 0);
+    
+    // ✅ CORREÇÃO: Converter data para formato ISO com hora local meio-dia
+    const [year, month, day] = dataCompraInput.split('-');
+    const dataCompra = new Date(year, month - 1, day, 12, 0, 0).toISOString();
+    
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
+    
+    try {
+        await apiCall(null, {
+            action: 'registerPurchase',
+            dataCompra,
+            notaFiscal,
+            fornecedor,
+            responsavel,
+            itens,
+            valorTotal
+        }, false);
         
-        if (!dataCompra || !notaFiscal || !fornecedor || !responsavel) {
-            alert('Preencha todos os campos obrigatórios.');
+        addPurchaseModal.hide();
+        clearCache();
+        await fetchPurchases();
+        await fetchInventory();
+    } catch (error) {
+        alert(`Erro: ${error.message}`);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save"></i> Salvar Compra';
+    }
+});
+    
+    // Editar compra - LOCALIZAR E SUBSTITUIR
+document.getElementById('saveEditPurchaseButton').addEventListener('click', async (e) => {
+    const btn = e.target;
+    const dataCompraInput = document.getElementById('editDataCompra').value;
+    const notaFiscal = document.getElementById('editNotaFiscal').value.trim();
+    const fornecedor = document.getElementById('editFornecedor').value.trim();
+    const responsavel = document.getElementById('editResponsavel').value.trim();
+    
+    if (!dataCompraInput || !notaFiscal || !fornecedor || !responsavel) {
+        alert('Preencha todos os campos obrigatórios.');
+        return;
+    }
+    
+    const itens = [];
+    let hasError = false;
+    
+    document.querySelectorAll('#edit-purchase-items-container .purchase-item-row').forEach(row => {
+        const nome = row.querySelector('.edit-purchase-item-name').value.trim();
+        const categoria = row.querySelector('.edit-purchase-item-category').value;
+        const qtd = parseInt(row.querySelector('.edit-purchase-item-qty').value);
+        const preco = parseFloat(row.querySelector('.edit-purchase-item-price').value);
+        
+        if (!nome || !categoria || !qtd || !preco) {
+            hasError = true;
             return;
         }
         
-        const itens = [];
-        let hasError = false;
-        
-        document.querySelectorAll('#edit-purchase-items-container .purchase-item-row').forEach(row => {
-            const nome = row.querySelector('.edit-purchase-item-name').value.trim();
-            const categoria = row.querySelector('.edit-purchase-item-category').value;
-            const qtd = parseInt(row.querySelector('.edit-purchase-item-qty').value);
-            const preco = parseFloat(row.querySelector('.edit-purchase-item-price').value);
-            
-            if (!nome || !categoria || !qtd || !preco) {
-                hasError = true;
-                return;
-            }
-            
-            itens.push({ nome, categoria, qtd, preco });
-        });
-        
-        if (hasError || itens.length === 0) {
-            alert('Preencha todos os itens corretamente, incluindo a categoria.');
-            return;
-        }
-        
-        if (!confirm('⚠️ ATENÇÃO: Esta ação irá ajustar automaticamente o estoque.\n\nItens antigos serão removidos e os novos serão adicionados.\n\nDeseja continuar?')) {
-            return;
-        }
-        
-        const valorTotal = itens.reduce((sum, item) => sum + (item.qtd * item.preco), 0);
-        
-        btn.disabled = true;
-        btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Salvando...`;
-        
-        try {
-            await apiCall(null, {
-                action: 'editPurchase',
-                dataCompra,
-                notaFiscal,
-                fornecedor,
-                responsavel,
-                itens,
-                valorTotal
-            }, false);
-            
-            editPurchaseModal.hide();
-            clearCache();
-            await fetchPurchases();
-            await fetchInventory();
-            alert('✅ Nota Fiscal atualizada com sucesso! O estoque foi ajustado automaticamente.');
-        } catch (error) {
-            alert(`❌ Erro ao editar nota fiscal:\n\n${error.message}`);
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-save"></i> Salvar Alterações';
-        }
+        itens.push({ nome, categoria, qtd, preco });
     });
+    
+    if (hasError || itens.length === 0) {
+        alert('Preencha todos os itens corretamente, incluindo a categoria.');
+        return;
+    }
+    
+    if (!confirm('⚠️ ATENÇÃO: Esta ação irá ajustar automaticamente o estoque.\n\nItens antigos serão removidos e os novos serão adicionados.\n\nDeseja continuar?')) {
+        return;
+    }
+    
+    const valorTotal = itens.reduce((sum, item) => sum + (item.qtd * item.preco), 0);
+    
+    // ✅ CORREÇÃO: Converter data para formato ISO com hora local meio-dia
+    const [year, month, day] = dataCompraInput.split('-');
+    const dataCompra = new Date(year, month - 1, day, 12, 0, 0).toISOString();
+    
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Salvando...`;
+    
+    try {
+        await apiCall(null, {
+            action: 'editPurchase',
+            dataCompra,
+            notaFiscal,
+            fornecedor,
+            responsavel,
+            itens,
+            valorTotal
+        }, false);
+        
+        editPurchaseModal.hide();
+        clearCache();
+        await fetchPurchases();
+        await fetchInventory();
+        alert('✅ Nota Fiscal atualizada com sucesso! O estoque foi ajustado automaticamente.');
+    } catch (error) {
+        alert(`❌ Erro ao editar nota fiscal:\n\n${error.message}`);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save"></i> Salvar Alterações';
+    }
+});
     
     // Busca no inventário
     document.getElementById('searchInventory')?.addEventListener('input', function(e) {
