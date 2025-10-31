@@ -23,8 +23,8 @@ function getSheets() {
 
 function createComprasSheet(ss) {
   const sheet = ss.insertSheet(SHEET_NAME_COMPRAS);
-  sheet.appendRow(['Data', 'Nota Fiscal', 'Fornecedor', 'Itens', 'Valor Total', 'Responsável']);
-  sheet.getRange(1, 1, 1, 6).setFontWeight('bold').setBackground('#1e3a8a').setFontColor('#ffffff');
+  sheet.appendRow(['Data de Registro', 'Data da Compra (NF)', 'Nota Fiscal', 'Fornecedor', 'Itens', 'Valor Total', 'Responsável']);
+  sheet.getRange(1, 1, 1, 7).setFontWeight('bold').setBackground('#1e3a8a').setFontColor('#ffffff');
   return sheet;
 }
 
@@ -115,15 +115,19 @@ function getOrdersData() {
 function getPurchasesData() {
   const { compras } = getSheets();
   if (compras.getLastRow() < 2) return [];
-  const values = compras.getRange(2, 1, compras.getLastRow() - 1, 6).getValues();
-  return values.map(([data, notaFiscal, fornecedor, itens, valorTotal, responsavel], index) => ({
+  
+  // ✅ CORRIGIDO: Agora lê 7 colunas (A até G)
+  const values = compras.getRange(2, 1, compras.getLastRow() - 1, 7).getValues();
+  
+  return values.map(([dataRegistro, dataCompra, notaFiscal, fornecedor, itens, valorTotal, responsavel], index) => ({
     rowIndex: index + 2,
-    data, 
-    notaFiscal, 
-    fornecedor, 
-    itens, 
-    valorTotal, 
-    responsavel
+    dataRegistro,      // Coluna A - Data de Registro
+    dataCompra,        // Coluna B - Data da Compra (NF)
+    notaFiscal,        // Coluna C - Nota Fiscal
+    fornecedor,        // Coluna D - Fornecedor
+    itens,             // Coluna E - Itens
+    valorTotal,        // Coluna F - Valor Total
+    responsavel        // Coluna G - Responsável
   })).reverse();
 }
 
@@ -195,16 +199,20 @@ function handleOrderSubmission(data) {
 
 function handlePurchaseRegistration(data) {
   const { compras, estoque } = getSheets();
+  const dataRegistro = new Date(); // Data atual do registro
   const dataCompra = data.dataCompra ? new Date(data.dataCompra) : new Date();
 
   const itensStr = JSON.stringify(data.itens);
+  
+  // ✅ CORRIGIDO: Agora adiciona 7 colunas (A até G)
   compras.appendRow([
-    dataCompra,
-    data.notaFiscal,
-    data.fornecedor,
-    itensStr,
-    data.valorTotal,
-    data.responsavel
+    dataRegistro,       // Coluna A - Data de Registro
+    dataCompra,         // Coluna B - Data da Compra (NF)
+    data.notaFiscal,    // Coluna C - Nota Fiscal
+    data.fornecedor,    // Coluna D - Fornecedor
+    itensStr,           // Coluna E - Itens (JSON)
+    data.valorTotal,    // Coluna F - Valor Total
+    data.responsavel    // Coluna G - Responsável
   ]);
 
   const allStockRange = estoque.getRange(2, 1, estoque.getLastRow() - 1, 4);
@@ -248,15 +256,16 @@ function handlePurchaseRegistration(data) {
 function handleEditPurchase(data) {
   const { compras, estoque } = getSheets();
   
-  // 1. Buscar a nota fiscal original
-  const nfValues = compras.getRange(2, 2, compras.getLastRow() - 1, 5).getValues();
+  // ✅ CORRIGIDO: Buscar em 7 colunas (A até G)
+  const nfValues = compras.getRange(2, 1, compras.getLastRow() - 1, 7).getValues();
   let rowIndex = -1;
   let oldItensStr = '';
   
   for (let i = 0; i < nfValues.length; i++) {
-    if (nfValues[i][0].toString().trim() === data.notaFiscal.trim()) {
+    // Nota Fiscal agora está na coluna C (índice 2)
+    if (nfValues[i][2].toString().trim() === data.notaFiscal.trim()) {
       rowIndex = i + 2;
-      oldItensStr = nfValues[i][2];
+      oldItensStr = nfValues[i][4]; // Itens na coluna E (índice 4)
       break;
     }
   }
@@ -342,11 +351,12 @@ function handleEditPurchase(data) {
   const dataCompra = data.dataCompra ? new Date(data.dataCompra) : new Date();
   const newItensStr = JSON.stringify(newItens);
   
-  compras.getRange(rowIndex, 1).setValue(dataCompra);
-  compras.getRange(rowIndex, 3).setValue(data.fornecedor);
-  compras.getRange(rowIndex, 4).setValue(newItensStr);
-  compras.getRange(rowIndex, 5).setValue(data.valorTotal);
-  compras.getRange(rowIndex, 6).setValue(data.responsavel);
+  // ✅ CORRIGIDO: Atualizar nas colunas corretas
+  compras.getRange(rowIndex, 2).setValue(dataCompra);     // Coluna B - Data da Compra (NF)
+  compras.getRange(rowIndex, 4).setValue(data.fornecedor); // Coluna D - Fornecedor
+  compras.getRange(rowIndex, 5).setValue(newItensStr);     // Coluna E - Itens
+  compras.getRange(rowIndex, 6).setValue(data.valorTotal); // Coluna F - Valor Total
+  compras.getRange(rowIndex, 7).setValue(data.responsavel);// Coluna G - Responsável
   
   Logger.log(`Nota Fiscal ${data.notaFiscal} atualizada com sucesso.`);
   
@@ -354,20 +364,21 @@ function handleEditPurchase(data) {
 }
 
 // =======================================================================
-// FUNÇÃO DELETAR NOTA FISCAL - CORRIGIDA
+// FUNÇÃO DELETAR NOTA FISCAL - CORRIGIDA E MELHORADA
 // =======================================================================
 function handleDeletePurchase(data) {
   const { compras, estoque } = getSheets();
   
-  // 1. Buscar a nota fiscal
-  const nfValues = compras.getRange(2, 2, compras.getLastRow() - 1, 3).getValues();
+  // ✅ CORRIGIDO: Ler todas as 7 colunas (A até G)
+  const allComprasData = compras.getRange(2, 1, compras.getLastRow() - 1, 7).getValues();
   let rowIndex = -1;
   let itensStr = '';
   
-  for (let i = 0; i < nfValues.length; i++) {
-    if (nfValues[i][0].toString().trim() === data.notaFiscal.trim()) {
+  for (let i = 0; i < allComprasData.length; i++) {
+    // Nota Fiscal está na coluna C (índice 2)
+    if (allComprasData[i][2].toString().trim() === data.notaFiscal.trim()) {
       rowIndex = i + 2;
-      itensStr = nfValues[i][1]; // Coluna "Itens"
+      itensStr = allComprasData[i][4]; // Itens na coluna E (índice 4)
       break;
     }
   }
@@ -376,12 +387,25 @@ function handleDeletePurchase(data) {
     throw new Error("Nota Fiscal não encontrada para exclusão.");
   }
   
+  Logger.log(`Nota Fiscal encontrada na linha ${rowIndex}`);
+  Logger.log(`Itens String: ${itensStr}`);
+  
   // 2. Parsear os itens da nota fiscal
   let itens = [];
   try {
+    if (!itensStr || itensStr.toString().trim() === '') {
+      throw new Error("Campo de itens está vazio.");
+    }
     itens = JSON.parse(itensStr);
+    
+    if (!Array.isArray(itens) || itens.length === 0) {
+      throw new Error("Nenhum item encontrado na nota fiscal.");
+    }
+    
+    Logger.log(`${itens.length} itens parseados com sucesso`);
   } catch(e) {
-    throw new Error("Erro ao ler itens da nota fiscal.");
+    Logger.log(`Erro ao parsear itens: ${e.toString()}`);
+    throw new Error(`Erro ao ler itens da nota fiscal: ${e.message}\n\nA nota pode estar corrompida.`);
   }
   
   // 3. Montar mapa do estoque atual
@@ -399,29 +423,61 @@ function handleDeletePurchase(data) {
     });
   });
   
-  // 4. REVERTER itens do estoque (remover quantidades)
+  // 4. VALIDAR se é possível remover
+  const itemsToRemove = [];
+  const insufficientItems = [];
+  
   for (const item of itens) {
     const itemNameLower = item.nome.trim().toLowerCase();
     
     if (!stockItemsMap.has(itemNameLower)) {
-      throw new Error(`Item '${item.nome}' não encontrado no estoque. Não é possível excluir esta nota fiscal.`);
+      throw new Error(`Item '${item.nome}' não encontrado no estoque.`);
     }
     
     const stockItem = stockItemsMap.get(itemNameLower);
     const newQty = stockItem.qtd - parseInt(item.qtd);
     
     if (newQty < 0) {
-      throw new Error(`⚠️ IMPOSSÍVEL EXCLUIR: Estoque insuficiente de '${item.nome}'.\n\nEstoque atual: ${stockItem.qtd}\nQuantidade na NF: ${item.qtd}\n\nJá foram consumidas ${Math.abs(newQty)} unidades deste item.\n\nPara excluir esta nota fiscal, você precisa primeiro adicionar ${Math.abs(newQty)} unidades ao estoque.`);
+      insufficientItems.push({
+        nome: item.nome,
+        estoqueAtual: stockItem.qtd,
+        qtdNaNota: item.qtd,
+        deficit: Math.abs(newQty)
+      });
+    } else {
+      itemsToRemove.push({
+        nome: item.nome,
+        qtdRemover: item.qtd,
+        novoEstoque: newQty,
+        rowIndex: stockItem.rowIndex
+      });
     }
-    
-    // Atualizar estoque
-    estoque.getRange(stockItem.rowIndex, 3).setValue(newQty);
-    Logger.log(`Removido do estoque: '${item.nome}' -${item.qtd} = ${newQty}`);
   }
   
-  // 5. Deletar a nota fiscal
+  // 5. Bloquear se houver estoque insuficiente
+  if (insufficientItems.length > 0) {
+    let errorMessage = '⚠️ IMPOSSÍVEL EXCLUIR NOTA FISCAL\n\n';
+    errorMessage += '❌ Itens com estoque INSUFICIENTE:\n\n';
+    
+    insufficientItems.forEach(item => {
+      errorMessage += `📦 ${item.nome}\n`;
+      errorMessage += `   • Estoque: ${item.estoqueAtual}\n`;
+      errorMessage += `   • Na NF: ${item.qtdNaNota}\n`;
+      errorMessage += `   • Faltam: ${item.deficit}\n\n`;
+    });
+    
+    throw new Error(errorMessage);
+  }
+  
+  // 6. Remover do estoque
+  itemsToRemove.forEach(item => {
+    estoque.getRange(item.rowIndex, 3).setValue(item.novoEstoque);
+    Logger.log(`Removido: ${item.nome} -${item.qtdRemover} = ${item.novoEstoque}`);
+  });
+  
+  // 7. Deletar a nota fiscal
   compras.deleteRow(rowIndex);
-  Logger.log(`Nota Fiscal ${data.notaFiscal} excluída com sucesso.`);
+  Logger.log(`Nota Fiscal ${data.notaFiscal} excluída.`);
   
   return { result: 'success' };
 }
