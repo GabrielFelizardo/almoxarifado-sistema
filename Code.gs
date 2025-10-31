@@ -64,7 +64,7 @@ function doPost(e) {
       case 'editItemName': result = handleEditItemName(data); break;
       case 'deleteOrder': result = handleDeleteOrder(data); break;
       case 'deletePurchase': result = handleDeletePurchase(data); break;
-      case 'editPurchase': result = handleEditPurchase(data); break; // NOVA ACTION
+      case 'editPurchase': result = handleEditPurchase(data); break;
       default: throw new Error("Ação desconhecida.");
     }
     return createJsonResponse(result);
@@ -96,9 +96,9 @@ function getInventoryData() {
 function getOrdersData() {
   const { pedidos } = getSheets();
   if (pedidos.getLastRow() < 2) return [];
-  const values = pedidos.getRange(2, 1, pedidos.getLastRow() - 1, 11).getValues(); // +1 coluna para rowId
+  const values = pedidos.getRange(2, 1, pedidos.getLastRow() - 1, 11).getValues();
   return values.map((row, index) => ({
-    rowId: index + 2, // ID da linha na planilha (começa em 2)
+    rowId: index + 2,
     timestamp: row[0],
     pedidoId: row[1],
     solicitante: row[2],
@@ -117,7 +117,7 @@ function getPurchasesData() {
   if (compras.getLastRow() < 2) return [];
   const values = compras.getRange(2, 1, compras.getLastRow() - 1, 6).getValues();
   return values.map(([data, notaFiscal, fornecedor, itens, valorTotal, responsavel], index) => ({
-    rowIndex: index + 2, // Índice da linha na planilha
+    rowIndex: index + 2,
     data, 
     notaFiscal, 
     fornecedor, 
@@ -243,7 +243,7 @@ function handlePurchaseRegistration(data) {
 }
 
 // =======================================================================
-// NOVA FUNÇÃO: Editar Nota Fiscal com Ajuste Automático de Estoque
+// FUNÇÃO EDITAR NOTA FISCAL
 // =======================================================================
 function handleEditPurchase(data) {
   const { compras, estoque } = getSheets();
@@ -256,7 +256,7 @@ function handleEditPurchase(data) {
   for (let i = 0; i < nfValues.length; i++) {
     if (nfValues[i][0].toString().trim() === data.notaFiscal.trim()) {
       rowIndex = i + 2;
-      oldItensStr = nfValues[i][2]; // Coluna "Itens"
+      oldItensStr = nfValues[i][2];
       break;
     }
   }
@@ -305,7 +305,6 @@ function handleEditPurchase(data) {
       throw new Error(`Estoque insuficiente de '${oldItem.nome}'. Atual: ${stockItem.qtd}, Necessário remover: ${oldItem.qtd}. Já foram usadas ${Math.abs(newQty)} unidades.`);
     }
     
-    // Atualizar no mapa e na planilha
     estoque.getRange(stockItem.rowIndex, 3).setValue(newQty);
     stockItem.qtd = newQty;
     Logger.log(`Revertido: '${oldItem.nome}' -${oldItem.qtd} = ${newQty}`);
@@ -317,7 +316,6 @@ function handleEditPurchase(data) {
     const quantityToAdd = parseInt(newItem.qtd);
     
     if (stockItemsMap.has(itemNameLower)) {
-      // Item já existe
       const stockItem = stockItemsMap.get(itemNameLower);
       const newQty = stockItem.qtd + quantityToAdd;
       
@@ -325,11 +323,9 @@ function handleEditPurchase(data) {
       stockItem.qtd = newQty;
       Logger.log(`Adicionado: '${newItem.nome}' +${quantityToAdd} = ${newQty}`);
     } else {
-      // Item não existe - criar novo
       const newSKU = generateNewSKU(estoque, newItem.categoria);
       estoque.appendRow([newSKU, newItem.nome, quantityToAdd, newItem.categoria]);
       
-      // Adicionar ao mapa
       stockItemsMap.set(itemNameLower, {
         sku: newSKU,
         nome: newItem.nome,
@@ -346,11 +342,11 @@ function handleEditPurchase(data) {
   const dataCompra = data.dataCompra ? new Date(data.dataCompra) : new Date();
   const newItensStr = JSON.stringify(newItens);
   
-  compras.getRange(rowIndex, 1).setValue(dataCompra); // Data
-  compras.getRange(rowIndex, 3).setValue(data.fornecedor); // Fornecedor
-  compras.getRange(rowIndex, 4).setValue(newItensStr); // Itens (atualizado)
-  compras.getRange(rowIndex, 5).setValue(data.valorTotal); // Valor Total
-  compras.getRange(rowIndex, 6).setValue(data.responsavel); // Responsável
+  compras.getRange(rowIndex, 1).setValue(dataCompra);
+  compras.getRange(rowIndex, 3).setValue(data.fornecedor);
+  compras.getRange(rowIndex, 4).setValue(newItensStr);
+  compras.getRange(rowIndex, 5).setValue(data.valorTotal);
+  compras.getRange(rowIndex, 6).setValue(data.responsavel);
   
   Logger.log(`Nota Fiscal ${data.notaFiscal} atualizada com sucesso.`);
   
@@ -358,7 +354,80 @@ function handleEditPurchase(data) {
 }
 
 // =======================================================================
-// FUNÇÃO ATUALIZADA: Status individual por linha (não por pedidoId)
+// FUNÇÃO DELETAR NOTA FISCAL - CORRIGIDA
+// =======================================================================
+function handleDeletePurchase(data) {
+  const { compras, estoque } = getSheets();
+  
+  // 1. Buscar a nota fiscal
+  const nfValues = compras.getRange(2, 2, compras.getLastRow() - 1, 3).getValues();
+  let rowIndex = -1;
+  let itensStr = '';
+  
+  for (let i = 0; i < nfValues.length; i++) {
+    if (nfValues[i][0].toString().trim() === data.notaFiscal.trim()) {
+      rowIndex = i + 2;
+      itensStr = nfValues[i][1]; // Coluna "Itens"
+      break;
+    }
+  }
+  
+  if (rowIndex === -1) {
+    throw new Error("Nota Fiscal não encontrada para exclusão.");
+  }
+  
+  // 2. Parsear os itens da nota fiscal
+  let itens = [];
+  try {
+    itens = JSON.parse(itensStr);
+  } catch(e) {
+    throw new Error("Erro ao ler itens da nota fiscal.");
+  }
+  
+  // 3. Montar mapa do estoque atual
+  const allStockValues = estoque.getRange(2, 1, estoque.getLastRow() - 1, 4).getValues();
+  const stockItemsMap = new Map();
+  
+  allStockValues.forEach((row, index) => {
+    const itemNameLower = row[1].toString().trim().toLowerCase();
+    stockItemsMap.set(itemNameLower, {
+      sku: row[0],
+      nome: row[1],
+      qtd: parseInt(row[2]) || 0,
+      categoria: row[3],
+      rowIndex: index + 2
+    });
+  });
+  
+  // 4. REVERTER itens do estoque (remover quantidades)
+  for (const item of itens) {
+    const itemNameLower = item.nome.trim().toLowerCase();
+    
+    if (!stockItemsMap.has(itemNameLower)) {
+      throw new Error(`Item '${item.nome}' não encontrado no estoque. Não é possível excluir esta nota fiscal.`);
+    }
+    
+    const stockItem = stockItemsMap.get(itemNameLower);
+    const newQty = stockItem.qtd - parseInt(item.qtd);
+    
+    if (newQty < 0) {
+      throw new Error(`⚠️ IMPOSSÍVEL EXCLUIR: Estoque insuficiente de '${item.nome}'.\n\nEstoque atual: ${stockItem.qtd}\nQuantidade na NF: ${item.qtd}\n\nJá foram consumidas ${Math.abs(newQty)} unidades deste item.\n\nPara excluir esta nota fiscal, você precisa primeiro adicionar ${Math.abs(newQty)} unidades ao estoque.`);
+    }
+    
+    // Atualizar estoque
+    estoque.getRange(stockItem.rowIndex, 3).setValue(newQty);
+    Logger.log(`Removido do estoque: '${item.nome}' -${item.qtd} = ${newQty}`);
+  }
+  
+  // 5. Deletar a nota fiscal
+  compras.deleteRow(rowIndex);
+  Logger.log(`Nota Fiscal ${data.notaFiscal} excluída com sucesso.`);
+  
+  return { result: 'success' };
+}
+
+// =======================================================================
+// FUNÇÃO ATUALIZAR STATUS (individual por linha)
 // =======================================================================
 function handleUpdateStatus(data) {
   const { pedidos, estoque } = getSheets();
@@ -367,14 +436,11 @@ function handleUpdateStatus(data) {
     throw new Error("Dados para atualizar status incompletos.");
   }
 
-  // Buscar a linha específica pelo rowId
   const rowData = pedidos.getRange(data.rowId, 1, 1, 10).getValues()[0];
-  const oldStatus = rowData[9]; // Status atual
+  const oldStatus = rowData[9];
   
-  // Atualizar o status da linha específica
   pedidos.getRange(data.rowId, 10).setValue(data.newStatus);
   
-  // Se mudou para "Concluído" e não estava concluído antes
   if (data.newStatus === 'Concluído' && oldStatus !== 'Concluído') {
     const itemName = rowData[5];
     const itemQty = Number(rowData[6]);
@@ -385,7 +451,9 @@ function handleUpdateStatus(data) {
   return { result: 'success' };
 }
 
+// =======================================================================
 // Funções auxiliares
+// =======================================================================
 function handleAddStock(data) { 
   const { estoque } = getSheets(); 
   const values = estoque.getRange(2, 2, estoque.getLastRow() - 1, 2).getValues(); 
@@ -534,20 +602,6 @@ function handleDeleteOrder(data) {
   }
   
   return { result: 'success' };
-}
-
-function handleDeletePurchase(data) {
-  const { compras } = getSheets();
-  const nfValues = compras.getRange(2, 2, compras.getLastRow() - 1, 1).getValues(); 
-  
-  for (let i = 0; i < nfValues.length; i++) {
-    if (nfValues[i][0].toString().trim() === data.notaFiscal.trim()) {
-      compras.deleteRow(i + 2);
-      return { result: 'success' };
-    }
-  }
-  
-  throw new Error("Nota Fiscal não encontrada para exclusão.");
 }
 
 function createJsonResponse(data) { 
