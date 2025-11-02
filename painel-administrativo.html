@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1050,13 +1051,17 @@
                  class="gov-logo-img">
             <h1 class="system-title">Sistema de Gestão de Almoxarifado</h1>
             <div class="header-actions">
-                <a href="formulario-pedido.html" target="_blank" class="btn btn-header btn-header-form">
-                    <i class="fas fa-edit"></i> Formulário
-                </a>
-                <a href="https://docs.google.com/spreadsheets/d/1aOWeZYIo1Che6vlj7TPwasVcxmR97eeq83WsWsDtP_I" target="_blank" class="btn btn-header btn-header-sheet">
-                    <i class="fas fa-table"></i> Planilha
-                </a>
-            </div>
+    <a href="formulario-pedido.html" target="_blank" class="btn btn-header btn-header-form">
+        <i class="fas fa-edit"></i> Formulário
+    </a>
+    <!-- ✅ Link ofuscado da planilha -->
+    <a href="#" 
+       onclick="event.preventDefault(); window.open(CONFIG.planilhaPublica, '_blank');" 
+       class="btn btn-header btn-header-sheet"
+       title="Abrir planilha do Google Sheets">
+        <i class="fas fa-table"></i> Planilha
+    </a>
+</div>
         </div>
     </div>
 
@@ -1437,18 +1442,29 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // =======================================================================
-// CONFIGURAÇÕES E CONSTANTES
-// =======================================================================
+      const CONFIG = {
+    // URL do Apps Script (ofuscada) - ✅ ATUALIZADO!
+    scriptUrl: atob("aHR0cHM6Ly9zY3JpcHQuZ29vZ2xlLmNvbS9tYWNyb3Mvcy9BS2Z5Y2J5bGVSdUNJWnpoV18tTWFmczFsdm9XWlMzSmtqYklnclN5OGp3UU5HSTU5c3NoeWlwaDRZY1ROWlRfdkRVaVNRS1hWdy9leGVj"),
+    
+    // URL pública da planilha (ofuscada) - NÃO MUDA
+    planilhaPublica: atob("aHR0cHM6Ly9kb2NzLmdvb2dsZS5jb20vc3ByZWFkc2hlZXRzL2QvMWFPV2VaWUlvMUNoZTZ2bGo3VFB3YXNWY3htUjk3ZWVxODNXc1dzRHRQX0k="),
+    
+    // Informações do sistema
+    appName: "Sistema de Almoxarifado - SEDEICS",
+    version: "2.0.2" // ✅ Atualizei a versão também
+};
+
+// Variável global usada no resto do código
+const SCRIPT_URL = CONFIG.scriptUrl;
+
+// ✅ Constantes do sistema (não mexer)
 const ADMIN_PASSWORD_HASH = 'f788c6adb4f9fda87b064468ead05318f614753b7b62a6a655e284bd6e364f55';
 const SESSION_KEY = 'sedeics_auth';
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyleRuCIZzhW_-Mafs1lvoWZS3JkjbIgrSy8jwQNGI95sshyiph4YcTNZT_vDUiSQKXVw/exec"; // ← COLOQUE A URL DO GOOGLE APPS SCRIPT
 const LOW_STOCK_THRESHOLD = 10;
 const HIGH_STOCK_THRESHOLD = 100;
 const CACHE_DURATION = 5 * 60 * 1000;
 const ITEMS_PER_PAGE = 20;
 const STOCK_ITEMS_PER_PAGE = 10;
-
 // =======================================================================
 // FUNÇÕES UTILITÁRIAS DE DATA
 // =======================================================================
